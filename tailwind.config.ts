@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				mari: {
+					'primary-green': '#4CAF50',
+					'light-green': '#8BC34A',
+					'very-light-green': '#DCEDC8',
+					'dark-green': '#2E7D32',
+					'accent-blue': '#2196F3',
+					'gray-light': '#f5f5f5',
+					'gray': '#9E9E9E',
+					'white': '#FFFFFF',
+					'black': '#212121',
 				}
 			},
 			borderRadius: {
@@ -84,11 +96,61 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'gradient': {
+					'0%': { backgroundPosition: '0% 50%' },
+					'50%': { backgroundPosition: '100% 50%' },
+					'100%': { backgroundPosition: '0% 50%' }
+				},
+				'slideRow': {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-100%)' }
+				},
+				'fadeInDown': {
+					'from': {
+						opacity: '0',
+						transform: 'translateY(-30px)'
+					},
+					'to': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
+				'fadeInUp': {
+					'from': {
+						opacity: '0',
+						transform: 'translateY(30px)'
+					},
+					'to': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
+				'fadeIn': {
+					'from': {
+						opacity: '0'
+					},
+					'to': {
+						opacity: '1'
+					}
+				},
+				'pulse': {
+					'0%': { opacity: '0.4' },
+					'50%': { opacity: '0.8' },
+					'100%': { opacity: '0.4' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'gradient': 'gradient 3s linear infinite',
+				'slideRow': 'slideRow 30s linear infinite',
+				'slideRowReverse': 'slideRow 35s linear infinite reverse',
+				'slideRowSlow': 'slideRow 40s linear infinite',
+				'fadeInDown': 'fadeInDown 1s ease',
+				'fadeInUp': 'fadeInUp 1s ease',
+				'fadeIn': 'fadeIn 1s ease 0.5s both',
+				'pulse': 'pulse 2s infinite'
 			}
 		}
 	},
