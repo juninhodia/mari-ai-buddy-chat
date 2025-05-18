@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Mic, MessageSquare } from 'lucide-react';
+import { Search, Mic, MessageSquare, Loader2 } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
+
+const N8N_AUDIO_WEBHOOK_URL = 'https://chatfy.app.n8n.cloud/webhook-test/53267980-a99f-47fc-81ea-29bce15f1481';
 
 interface WelcomeScreenProps {
   onStartChat: (message: string) => void;
@@ -9,6 +11,11 @@ interface WelcomeScreenProps {
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [searchInput, setSearchInput] = useState('');
   const [isAudioMode, setIsAudioMode] = useState(false);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null);
 
   const handleQuestionClick = (question: string) => {
     onStartChat(question);
@@ -21,6 +28,132 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     }
   };
 
+  // Função para enviar mensagem de teste e chamar o webhook do n8n
+  const handleAudioSend = async () => {
+    setLoadingAudio(true);
+    setError(null);
+    setAudioUrl(null);
+    setPlaying(false);
+    if (audioInstance) {
+      audioInstance.pause();
+      audioInstance.currentTime = 0;
+      setAudioInstance(null);
+    }
+    // Payload para o n8n
+    const payload = {
+      message: 'Mensagem de teste de áudio',
+      type: 'audio',
+      timestamp: new Date().toISOString(),
+      user: 'usuário-teste',
+      meta: {
+        origem: 'welcome-screen',
+      },
+    };
+    let timeoutId: NodeJS.Timeout | null = null;
+    try {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch(N8N_AUDIO_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error('Erro ao receber resposta do n8n');
+      // Verifica o tipo de resposta
+      const contentType = response.headers.get('content-type') || '';
+      let url = '';
+      if (contentType.startsWith('audio/')) {
+        // Áudio direto
+        const blob = await response.blob();
+        url = URL.createObjectURL(blob);
+      } else if (contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data.audioUrl) {
+          url = data.audioUrl;
+        } else if (data.audioBase64) {
+          url = `data:audio/wav;base64,${data.audioBase64}`;
+        } else {
+          throw new Error('Formato de áudio não suportado');
+        }
+      } else {
+        throw new Error('Formato de resposta não suportado');
+      }
+      setAudioUrl(url);
+      playAudio(url);
+    } catch (err: any) {
+      setError('Erro ao processar áudio: ' + (err?.message || 'Erro desconhecido'));
+    } finally {
+      setLoadingAudio(false);
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
+  // Função para tocar o áudio
+  const playAudio = (url: string) => {
+    if (audioInstance) {
+      audioInstance.pause();
+      audioInstance.currentTime = 0;
+      setAudioInstance(null);
+    }
+    const audio = new Audio(url);
+    setAudioInstance(audio);
+    setPlaying(true);
+    audio.play();
+    audio.onended = () => {
+      setPlaying(false);
+      URL.revokeObjectURL(url);
+      setAudioInstance(null);
+    };
+    audio.onerror = () => {
+      setPlaying(false);
+      setError('Erro ao reproduzir o áudio');
+      setAudioInstance(null);
+    };
+  };
+
+  // UI modo áudio (apenas bola pulsante, botão de microfone e execução do áudio)
+  if (isAudioMode) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-5 text-center">
+        {/* Bola pulsante */}
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="w-32 h-32 rounded-full bg-mari-primary-green animate-pulse shadow-lg mb-8 flex items-center justify-center">
+            {loadingAudio && <Loader2 className="animate-spin text-white" size={48} />}
+            {playing && !loadingAudio && <Mic className="text-white animate-bounce" size={48} />}
+          </div>
+          {error && <div className="text-red-500 mb-4">{error}</div>}
+        </div>
+        {/* Botão de microfone */}
+        <button
+          className="mb-10 w-20 h-20 rounded-full bg-mari-primary-green text-white flex items-center justify-center shadow-lg text-3xl transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50"
+          onClick={handleAudioSend}
+          disabled={loadingAudio || playing}
+        >
+          <Mic size={40} />
+        </button>
+        {/* Toggle para voltar ao modo texto */}
+        <div className="flex items-center justify-center gap-2 mb-6 bg-mari-very-light-green rounded-full p-1">
+          <button
+            onClick={() => setIsAudioMode(false)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 bg-mari-primary-green text-white shadow-sm`}
+          >
+            <MessageSquare size={16} />
+            Texto
+          </button>
+          <button
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 text-mari-gray`}
+            disabled
+          >
+            <Mic size={16} />
+            Áudio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // UI modo texto (padrão)
   return (
     <div className="flex flex-col items-center justify-center h-full p-5 text-center">
       {/* Toggle Button */}
