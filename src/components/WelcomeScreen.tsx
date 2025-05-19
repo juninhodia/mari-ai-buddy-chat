@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Search, Mic, MessageSquare, Loader2 } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
 
@@ -13,6 +12,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [searchInput, setSearchInput] = useState('');
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [loadingAudio, setLoadingAudio] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -30,7 +32,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   };
 
   // Function to send message to n8n webhook
-  const handleAudioSend = async () => {
+  const sendAudioToN8n = async (audioBlob: Blob) => {
     setLoadingAudio(true);
     setError(null);
     setAudioUrl(null);
@@ -40,24 +42,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       audioInstance.currentTime = 0;
       setAudioInstance(null);
     }
-    // Payload for n8n
-    const payload = {
-      message: 'Mensagem de teste de áudio',
-      type: 'audio',
-      timestamp: new Date().toISOString(),
-      user: 'usuário-teste',
-      meta: {
-        origem: 'welcome-screen',
-      },
-    };
+    // Prepare multipart/form-data with the audio file
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
     let timeoutId: NodeJS.Timeout | null = null;
     try {
       const controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 30000);
       const response = await fetch(N8N_AUDIO_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formData,
         signal: controller.signal,
       });
       if (!response.ok) throw new Error('Erro ao receber resposta do n8n');
@@ -111,6 +105,46 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       setError('Erro ao reproduzir o áudio');
       setAudioInstance(null);
     };
+  };
+
+  // START recording when user presses the button
+  const startRecording = async () => {
+    if (isRecording || loadingAudio || playing) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/webm;codecs=opus';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event: any) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // Stop all tracks to release mic
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        await sendAudioToN8n(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      setError('Não foi possível acessar o microfone: ' + (err?.message || 'Erro desconhecido'));
+    }
+  };
+
+  // STOP recording when user releases the button
+  const stopRecording = () => {
+    if (!isRecording) return;
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
   };
 
   return (
@@ -204,7 +238,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         ) : (
           <button
             className="mb-10 w-20 h-20 rounded-full bg-mari-primary-green text-white flex items-center justify-center shadow-lg text-3xl transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50 transform hover:scale-105"
-            onClick={handleAudioSend}
+            onMouseDown={startRecording}
+            onTouchStart={startRecording}
+            onMouseUp={stopRecording}
+            onMouseLeave={stopRecording}
+            onTouchEnd={stopRecording}
             disabled={loadingAudio || playing}
           >
             <Mic size={40} />
