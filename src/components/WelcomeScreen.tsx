@@ -187,8 +187,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           </div>
         </div>
 
-        {/* Header Text */}
-        <div className="w-full mb-10 animate-fadeInDown">
+        {/* Header Text - Now centered */}
+        <div className="w-full mb-10 animate-fadeInDown text-center">
           <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
             Oi, sou a Mari
           </div>
@@ -205,8 +205,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
       {/* Bottom Section: Input Field */}
       <div className="w-full flex flex-col items-center justify-center mb-8 mt-4">
-        {/* Footer Text moved above the input */}
-        <div className="w-full mb-3">
+        {/* Footer Text moved above the input - Now centered */}
+        <div className="w-full mb-3 text-center">
           <p className="text-sm text-mari-gray opacity-70 animate-pulse">
             Digite uma pergunta para iniciar a conversa
           </p>
