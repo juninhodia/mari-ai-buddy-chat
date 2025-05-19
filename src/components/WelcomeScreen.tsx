@@ -16,6 +16,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'processing'>('idle');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -148,24 +150,29 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
   // Função para iniciar a gravação
   const startRecording = async () => {
+    if (recordingStatus !== 'idle') return;
+    
+    setRecordingStatus('recording');
+    setError(null);
+    audioChunksRef.current = [];
+
     try {
-      // Solicitar permissão explicitamente primeiro
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Configurar constraints específicas para mobile
-      const constraints = {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         }
-      };
+      });
       
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/webm;codecs=opus';
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream, { 
+        mimeType,
+        audioBitsPerSecond: 128000
+      });
+      
       mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event: any) => {
         if (event.data.size > 0) {
@@ -174,16 +181,34 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       };
 
       mediaRecorder.onstop = async () => {
+        setRecordingStatus('processing');
+        
+        // Garantir que o stream seja liberado
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        
+        if (audioChunksRef.current.length === 0) {
+          setError('Nenhum áudio foi gravado. Tente novamente.');
+          setRecordingStatus('idle');
+          return;
+        }
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        // parar tracks
-        stream.getTracks().forEach((track) => track.stop());
-        setIsRecording(false);
         await sendAudioToN8n(audioBlob);
+        setRecordingStatus('idle');
+      };
+
+      mediaRecorder.onerror = (event: any) => {
+        console.error('Erro na gravação:', event);
+        setError('Erro durante a gravação. Tente novamente.');
+        stopRecording();
       };
 
       // Solicitar dados a cada 1 segundo para feedback mais rápido
       mediaRecorder.start(1000);
-      setIsRecording(true);
+      
       // Vibrar para feedback tátil em dispositivos móveis
       if (isMobile && navigator.vibrate) {
         navigator.vibrate(200);
@@ -200,12 +225,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         errorMsg += err.message || 'Erro desconhecido';
       }
       setError(errorMsg);
-      setIsRecording(false);
+      setRecordingStatus('idle');
+      
+      // Garantir que o stream seja liberado em caso de erro
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     }
   };
 
   // Função para parar a gravação
   const stopRecording = () => {
+    if (recordingStatus !== 'recording') return;
+    
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
@@ -218,10 +251,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
   // Handler do clique no botão: alterna entre gravar e parar
   const handleRecordButton = () => {
-    if (loadingAudio || playing) return; // evita conflitos
-    if (!isRecording) {
+    if (recordingStatus === 'processing' || loadingAudio || playing) return;
+    
+    if (recordingStatus === 'idle') {
       startRecording();
-    } else {
+    } else if (recordingStatus === 'recording') {
       stopRecording();
     }
   };
@@ -317,8 +351,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         ) : (
           <button
             className={`mb-10 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
-              ${isRecording 
+              ${recordingStatus === 'recording'
                 ? 'bg-red-600 animate-pulse scale-110' 
+                : recordingStatus === 'processing'
+                ? 'bg-yellow-500'
                 : 'bg-mari-primary-green hover:bg-mari-dark-green active:scale-95'
               } 
               text-white disabled:opacity-50 
@@ -327,13 +363,24 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
             `}
             onClick={handleRecordButton}
             onTouchStart={(e) => e.preventDefault()}
-            disabled={loadingAudio}
+            disabled={recordingStatus === 'processing' || loadingAudio}
           >
             <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
-            {isRecording ? <Loader2 className="animate-spin" size={40} /> : <Mic size={40} />}
-            {isRecording && (
+            {recordingStatus === 'recording' ? (
+              <Loader2 className="animate-spin" size={40} />
+            ) : recordingStatus === 'processing' ? (
+              <Loader2 className="animate-spin" size={40} />
+            ) : (
+              <Mic size={40} />
+            )}
+            {recordingStatus === 'recording' && (
               <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
                 Gravando...
+              </div>
+            )}
+            {recordingStatus === 'processing' && (
+              <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
+                Processando...
               </div>
             )}
           </button>
