@@ -22,6 +22,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   const handleQuestionClick = (question: string) => {
     onStartChat(question);
@@ -152,35 +153,58 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const startRecording = async () => {
     if (recordingStatus !== 'idle') return;
     
+    console.log('Iniciando gravação...');
+    setDebugInfo('Iniciando gravação...');
     setRecordingStatus('recording');
     setError(null);
     audioChunksRef.current = [];
 
     try {
+      console.log('Solicitando permissão do microfone...');
+      setDebugInfo('Solicitando permissão do microfone...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 44100,
+          channelCount: 1
         }
       });
       
+      console.log('Permissão concedida, configurando MediaRecorder...');
+      setDebugInfo('Permissão concedida, configurando MediaRecorder...');
+      
       streamRef.current = stream;
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/webm;codecs=opus';
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/mp4';
+        if (!MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/ogg';
+        }
+      }
+      
+      console.log('MimeType selecionado:', mimeType);
+      setDebugInfo(`MimeType selecionado: ${mimeType}`);
+      
       const mediaRecorder = new MediaRecorder(stream, { 
         mimeType,
-        audioBitsPerSecond: 128000
+        audioBitsPerSecond: 64000
       });
       
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event: any) => {
+        console.log('Dados de áudio recebidos:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = async () => {
+        console.log('Gravação parada, processando áudio...');
+        setDebugInfo('Gravação parada, processando áudio...');
         setRecordingStatus('processing');
         
         // Garantir que o stream seja liberado
@@ -190,30 +214,39 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         }
         
         if (audioChunksRef.current.length === 0) {
+          console.log('Nenhum dado de áudio foi gravado');
+          setDebugInfo('Nenhum dado de áudio foi gravado');
           setError('Nenhum áudio foi gravado. Tente novamente.');
           setRecordingStatus('idle');
           return;
         }
         
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('Criando blob de áudio...');
+        setDebugInfo('Criando blob de áudio...');
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log('Tamanho do blob:', audioBlob.size, 'bytes');
         await sendAudioToN8n(audioBlob);
         setRecordingStatus('idle');
       };
 
       mediaRecorder.onerror = (event: any) => {
         console.error('Erro na gravação:', event);
+        setDebugInfo(`Erro na gravação: ${event.error?.message || 'Erro desconhecido'}`);
         setError('Erro durante a gravação. Tente novamente.');
         stopRecording();
       };
 
       // Solicitar dados a cada 1 segundo para feedback mais rápido
       mediaRecorder.start(1000);
+      console.log('MediaRecorder iniciado com sucesso');
+      setDebugInfo('MediaRecorder iniciado com sucesso');
       
       // Vibrar para feedback tátil em dispositivos móveis
       if (isMobile && navigator.vibrate) {
         navigator.vibrate(200);
       }
     } catch (err: any) {
+      console.error('Erro ao iniciar gravação:', err);
       let errorMsg = 'Não foi possível acessar o microfone: ';
       if (err.name === 'NotAllowedError') {
         errorMsg += 'Permissão negada. Por favor, permita o acesso ao microfone.';
@@ -224,6 +257,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       } else {
         errorMsg += err.message || 'Erro desconhecido';
       }
+      setDebugInfo(`Erro: ${errorMsg}`);
       setError(errorMsg);
       setRecordingStatus('idle');
       
@@ -349,41 +383,48 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
             </form>
           </>
         ) : (
-          <button
-            className={`mb-10 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
-              ${recordingStatus === 'recording'
-                ? 'bg-red-600 animate-pulse scale-110' 
-                : recordingStatus === 'processing'
-                ? 'bg-yellow-500'
-                : 'bg-mari-primary-green hover:bg-mari-dark-green active:scale-95'
-              } 
-              text-white disabled:opacity-50 
-              ${isMobile ? 'active:scale-95 touch-none' : 'hover:scale-105'}
-              relative
-            `}
-            onClick={handleRecordButton}
-            onTouchStart={(e) => e.preventDefault()}
-            disabled={recordingStatus === 'processing' || loadingAudio}
-          >
-            <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
-            {recordingStatus === 'recording' ? (
-              <Loader2 className="animate-spin" size={40} />
-            ) : recordingStatus === 'processing' ? (
-              <Loader2 className="animate-spin" size={40} />
-            ) : (
-              <Mic size={40} />
-            )}
-            {recordingStatus === 'recording' && (
-              <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
-                Gravando...
+          <div className="flex flex-col items-center">
+            <button
+              className={`mb-4 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
+                ${recordingStatus === 'recording'
+                  ? 'bg-red-600 animate-pulse scale-110' 
+                  : recordingStatus === 'processing'
+                  ? 'bg-yellow-500'
+                  : 'bg-mari-primary-green hover:bg-mari-dark-green active:scale-95'
+                } 
+                text-white disabled:opacity-50 
+                ${isMobile ? 'active:scale-95 touch-none' : 'hover:scale-105'}
+                relative
+              `}
+              onClick={handleRecordButton}
+              onTouchStart={(e) => e.preventDefault()}
+              disabled={recordingStatus === 'processing' || loadingAudio}
+            >
+              <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
+              {recordingStatus === 'recording' ? (
+                <Loader2 className="animate-spin" size={40} />
+              ) : recordingStatus === 'processing' ? (
+                <Loader2 className="animate-spin" size={40} />
+              ) : (
+                <Mic size={40} />
+              )}
+              {recordingStatus === 'recording' && (
+                <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
+                  Gravando...
+                </div>
+              )}
+              {recordingStatus === 'processing' && (
+                <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
+                  Processando...
+                </div>
+              )}
+            </button>
+            {debugInfo && (
+              <div className="text-xs text-mari-gray mt-2 max-w-xs text-center">
+                {debugInfo}
               </div>
             )}
-            {recordingStatus === 'processing' && (
-              <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
-                Processando...
-              </div>
-            )}
-          </button>
+          </div>
         )}
       </div>
     </div>
