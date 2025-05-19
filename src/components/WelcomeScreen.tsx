@@ -34,6 +34,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   // Function to send message to n8n webhook
   const sendAudioToN8n = async (audioBlob: Blob) => {
     setLoadingAudio(true);
+    if (audioBlob.size === 0) {
+      setError('Nada foi gravado. Tente novamente.');
+      return;
+    }
     setError(null);
     setAudioUrl(null);
     setPlaying(false);
@@ -77,11 +81,45 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       setAudioUrl(url);
       playAudio(url);
     } catch (err: any) {
-      setError('Erro ao processar áudio: ' + (err?.message || 'Erro desconhecido'));
+      // fallback: tenta enviar como JSON base64
+      try {
+        const base64 = await blobToBase64(audioBlob);
+        const payload = { audioBase64: base64 };
+        const jsonResp = await fetch(N8N_AUDIO_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!jsonResp.ok) throw new Error('n8n retornou erro');
+        const data = await jsonResp.json();
+        let url = '';
+        if (data.audioUrl) url = data.audioUrl;
+        else if (data.audioBase64) url = `data:audio/wav;base64,${data.audioBase64}`;
+        if (url) {
+          setAudioUrl(url);
+          playAudio(url);
+        } else {
+          throw new Error('Resposta do n8n sem áudio');
+        }
+      } catch (e2: any) {
+        setError('Erro ao processar áudio: ' + (e2?.message || err?.message || 'Erro desconhecido'));
+      }
     } finally {
       setLoadingAudio(false);
       if (timeoutId) clearTimeout(timeoutId);
     }
+  };
+
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        resolve(dataUrl.split(',')[1]); // remove prefix
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   };
 
   // Function to play audio
