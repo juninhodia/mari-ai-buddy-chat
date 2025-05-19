@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Search, Mic, MessageSquare, Loader2 } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
 
-const N8N_AUDIO_WEBHOOK_URL = 'https://chatfy.app.n8n.cloud/webhook-test/53267980-a99f-47fc-81ea-29bce15f1481';
+const N8N_AUDIO_WEBHOOK_URL = 'https://rstysryr.app.n8n.cloud/webhook-test/53267980-a99f-47fc-81ea-29bce15f1481';
 
 interface WelcomeScreenProps {
   onStartChat: (message: string) => void;
