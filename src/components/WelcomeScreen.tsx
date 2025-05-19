@@ -155,33 +155,37 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
   // UI modo texto (padrão)
   return (
-    <div className="flex flex-col items-center justify-center h-full p-5 text-center">
-      {/* Toggle Button */}
-      <div className="flex items-center justify-center gap-2 mb-6 bg-mari-very-light-green rounded-full p-1">
-        <button
-          onClick={() => setIsAudioMode(false)}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
-            !isAudioMode 
-              ? 'bg-mari-primary-green text-white shadow-sm' 
-              : 'text-mari-gray hover:bg-mari-light-green/50'
-          }`}
-        >
-          <MessageSquare size={16} />
-          Texto
-        </button>
-        <button
-          onClick={() => setIsAudioMode(true)}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
-            isAudioMode 
-              ? 'bg-mari-primary-green text-white shadow-sm' 
-              : 'text-mari-gray hover:bg-mari-light-green/50'
-          }`}
-        >
-          <Mic size={16} />
-          Áudio
-        </button>
+    <div className="flex flex-col items-center justify-center h-full p-0 text-center">
+      {/* Toggle Button - Separated */}
+      <div className="w-full flex items-center justify-center mb-6">
+        <div className="flex items-center justify-center gap-2 bg-mari-very-light-green rounded-full p-1">
+          <button
+            onClick={() => setIsAudioMode(false)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+              !isAudioMode 
+                ? 'bg-mari-primary-green text-white shadow-sm' 
+                : 'text-mari-gray hover:bg-mari-light-green/50'
+            }`}
+          >
+            <MessageSquare size={16} />
+            Texto
+          </button>
+          <button
+            onClick={() => setIsAudioMode(true)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+              isAudioMode 
+                ? 'bg-mari-primary-green text-white shadow-sm' 
+                : 'text-mari-gray hover:bg-mari-light-green/50'
+            }`}
+          >
+            <Mic size={16} />
+            Áudio
+          </button>
+        </div>
       </div>
-      <div className="mb-10 animate-fadeInDown">
+
+      {/* Header - Separated */}
+      <div className="w-full mb-10 animate-fadeInDown">
         <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
           Oi, sou a Mari
         </div>
@@ -189,25 +193,37 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           Seu assistente de IA inteligente para ajudar no seu dia a dia
         </p>
       </div>
-      <QuestionsCarousel onQuestionClick={handleQuestionClick} />
-      <form onSubmit={handleSubmit} className="w-full max-w-xl relative mt-4">
-        <input
-          type="text"
-          className="w-full py-4 px-6 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-6 pr-12"
-          placeholder="Digite sua pergunta ou tópico para começar..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-        <button 
-          type="submit"
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
-        >
-          <Search size={20} />
-        </button>
-      </form>
-      <p className="absolute bottom-5 text-sm text-mari-gray opacity-70 animate-pulse">
-        Digite uma pergunta para iniciar a conversa
-      </p>
+
+      {/* Questions Carousel - Full Width - Separated */}
+      <div className="w-full">
+        <QuestionsCarousel onQuestionClick={handleQuestionClick} />
+      </div>
+
+      {/* Form - Separated */}
+      <div className="w-full flex items-center justify-center mt-4">
+        <form onSubmit={handleSubmit} className="w-full max-w-xl relative">
+          <input
+            type="text"
+            className="w-full py-4 px-6 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-6 pr-12"
+            placeholder="Digite sua pergunta ou tópico para começar..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          <button 
+            type="submit"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
+          >
+            <Search size={20} />
+          </button>
+        </form>
+      </div>
+
+      {/* Footer Text - Separated */}
+      <div className="w-full mt-5">
+        <p className="text-sm text-mari-gray opacity-70 animate-pulse">
+          Digite uma pergunta para iniciar a conversa
+        </p>
+      </div>
     </div>
   );
 };
