@@ -13,6 +13,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -148,7 +149,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   // Função para iniciar a gravação
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Solicitar permissão explicitamente primeiro
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Configurar constraints específicas para mobile
+      const constraints = {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/webm;codecs=opus';
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
@@ -168,10 +181,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         await sendAudioToN8n(audioBlob);
       };
 
-      mediaRecorder.start();
+      // Solicitar dados a cada 1 segundo para feedback mais rápido
+      mediaRecorder.start(1000);
       setIsRecording(true);
+      // Vibrar para feedback tátil em dispositivos móveis
+      if (isMobile && navigator.vibrate) {
+        navigator.vibrate(200);
+      }
     } catch (err: any) {
-      setError('Não foi possível acessar o microfone: ' + (err?.message || 'Erro desconhecido'));
+      let errorMsg = 'Não foi possível acessar o microfone: ';
+      if (err.name === 'NotAllowedError') {
+        errorMsg += 'Permissão negada. Por favor, permita o acesso ao microfone.';
+      } else if (err.name === 'NotFoundError') {
+        errorMsg += 'Nenhum microfone encontrado.';
+      } else if (err.name === 'NotReadableError') {
+        errorMsg += 'Microfone já em uso.';
+      } else {
+        errorMsg += err.message || 'Erro desconhecido';
+      }
+      setError(errorMsg);
+      setIsRecording(false);
     }
   };
 
@@ -180,6 +209,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
+      // Vibrar para feedback tátil em dispositivos móveis
+      if (isMobile && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
     }
   };
 
@@ -283,11 +316,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           </>
         ) : (
           <button
-            className={`mb-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform ${isRecording ? 'bg-red-600 animate-pulse' : 'bg-mari-primary-green hover:bg-mari-dark-green hover:scale-105'} text-white disabled:opacity-50`}
+            className={`mb-10 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
+              ${isRecording 
+                ? 'bg-red-600 animate-pulse scale-110' 
+                : 'bg-mari-primary-green hover:bg-mari-dark-green active:scale-95'
+              } 
+              text-white disabled:opacity-50 
+              ${isMobile ? 'active:scale-95 touch-none' : 'hover:scale-105'}
+              relative
+            `}
             onClick={handleRecordButton}
+            onTouchStart={(e) => e.preventDefault()}
             disabled={loadingAudio}
           >
+            <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
             {isRecording ? <Loader2 className="animate-spin" size={40} /> : <Mic size={40} />}
+            {isRecording && (
+              <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
+                Gravando...
+              </div>
+            )}
           </button>
         )}
       </div>
