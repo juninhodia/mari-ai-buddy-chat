@@ -29,7 +29,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     }
   };
 
-  // Função para enviar mensagem de teste e chamar o webhook do n8n
+  // Function to send message to n8n webhook
   const handleAudioSend = async () => {
     setLoadingAudio(true);
     setError(null);
@@ -40,7 +40,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       audioInstance.currentTime = 0;
       setAudioInstance(null);
     }
-    // Payload para o n8n
+    // Payload for n8n
     const payload = {
       message: 'Mensagem de teste de áudio',
       type: 'audio',
@@ -61,11 +61,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         signal: controller.signal,
       });
       if (!response.ok) throw new Error('Erro ao receber resposta do n8n');
-      // Verifica o tipo de resposta
+      // Check response type
       const contentType = response.headers.get('content-type') || '';
       let url = '';
       if (contentType.startsWith('audio/')) {
-        // Áudio direto
+        // Direct audio
         const blob = await response.blob();
         url = URL.createObjectURL(blob);
       } else if (contentType.includes('application/json')) {
@@ -90,7 +90,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     }
   };
 
-  // Função para tocar o áudio
+  // Function to play audio
   const playAudio = (url: string) => {
     if (audioInstance) {
       audioInstance.pause();
@@ -113,48 +113,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     };
   };
 
-  // UI modo áudio (apenas bola pulsante, botão de microfone e execução do áudio)
-  if (isAudioMode) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-5 text-center">
-        {/* Bola pulsante */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-32 h-32 rounded-full bg-mari-primary-green animate-pulse shadow-lg mb-8 flex items-center justify-center">
-            {loadingAudio && <Loader2 className="animate-spin text-white" size={48} />}
-            {playing && !loadingAudio && <Mic className="text-white animate-bounce" size={48} />}
-          </div>
-          {error && <div className="text-red-500 mb-4">{error}</div>}
-        </div>
-        {/* Botão de microfone */}
-        <button
-          className="mb-10 w-20 h-20 rounded-full bg-mari-primary-green text-white flex items-center justify-center shadow-lg text-3xl transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50"
-          onClick={handleAudioSend}
-          disabled={loadingAudio || playing}
-        >
-          <Mic size={40} />
-        </button>
-        {/* Toggle para voltar ao modo texto */}
-        <div className="flex items-center justify-center gap-2 mb-6 bg-mari-very-light-green rounded-full p-1">
-          <button
-            onClick={() => setIsAudioMode(false)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 bg-mari-primary-green text-white shadow-sm`}
-          >
-            <MessageSquare size={16} />
-            Texto
-          </button>
-          <button
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 text-mari-gray`}
-            disabled
-          >
-            <Mic size={16} />
-            Áudio
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // UI modo texto (padrão)
   return (
     <div className="flex flex-col items-center justify-between h-full p-0">
       {/* Top Section: Toggle Button and Header */}
@@ -187,7 +145,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           </div>
         </div>
 
-        {/* Header Text - Now centered */}
+        {/* Header Text - Always centered */}
         <div className="w-full mb-10 animate-fadeInDown text-center">
           <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
             Oi, sou a Mari
@@ -198,36 +156,60 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         </div>
       </div>
 
-      {/* Middle Section: Questions Carousel */}
-      <div className="w-full flex-grow flex items-center">
-        <QuestionsCarousel onQuestionClick={handleQuestionClick} />
+      {/* Middle Section: Either Questions Carousel (text mode) or Audio Pulsing Ball (audio mode) */}
+      <div className="w-full flex-grow flex items-center justify-center">
+        {!isAudioMode ? (
+          <div className="w-full transition-all duration-300 ease-in-out">
+            <QuestionsCarousel onQuestionClick={handleQuestionClick} />
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out">
+            <div className="w-32 h-32 rounded-full bg-mari-primary-green animate-pulse shadow-lg mb-8 flex items-center justify-center">
+              {loadingAudio && <Loader2 className="animate-spin text-white" size={48} />}
+              {playing && !loadingAudio && <Mic className="text-white animate-bounce" size={48} />}
+            </div>
+            {error && <div className="text-red-500 mb-4">{error}</div>}
+          </div>
+        )}
       </div>
 
-      {/* Bottom Section: Input Field */}
+      {/* Bottom Section: Input Field (text mode) or Audio Button (audio mode) */}
       <div className="w-full flex flex-col items-center justify-center mb-8 mt-4">
-        {/* Footer Text moved above the input - Now centered */}
-        <div className="w-full mb-3 text-center">
-          <p className="text-sm text-mari-gray opacity-70 animate-pulse">
-            Digite uma pergunta para iniciar a conversa
-          </p>
-        </div>
-        
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="w-full max-w-xl relative">
-          <input
-            type="text"
-            className="w-full py-4 px-6 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-6 pr-12"
-            placeholder="Digite sua pergunta ou tópico para começar..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          <button 
-            type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
+        {!isAudioMode ? (
+          <>
+            {/* Footer Text for text mode */}
+            <div className="w-full mb-3 text-center transition-opacity duration-300">
+              <p className="text-sm text-mari-gray opacity-70 animate-pulse">
+                Digite uma pergunta para iniciar a conversa
+              </p>
+            </div>
+            
+            {/* Form for text mode */}
+            <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out">
+              <input
+                type="text"
+                className="w-full py-4 px-6 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-6 pr-12"
+                placeholder="Digite sua pergunta ou tópico para começar..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+              <button 
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
+              >
+                <Search size={20} />
+              </button>
+            </form>
+          </>
+        ) : (
+          <button
+            className="mb-10 w-20 h-20 rounded-full bg-mari-primary-green text-white flex items-center justify-center shadow-lg text-3xl transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50 transform hover:scale-105"
+            onClick={handleAudioSend}
+            disabled={loadingAudio || playing}
           >
-            <Search size={20} />
+            <Mic size={40} />
           </button>
-        </form>
+        )}
       </div>
     </div>
   );
