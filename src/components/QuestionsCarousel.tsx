@@ -1,4 +1,3 @@
-
 import React from 'react';
 import CarouselRow from './CarouselRow';
 
@@ -7,32 +6,24 @@ interface QuestionsCarouselProps {
 }
 
 const QuestionsCarousel: React.FC<QuestionsCarouselProps> = ({ onQuestionClick }) => {
-  const row1Questions = [
-    "Como fazer a IA aprender com o passar do tempo?",
-    "Quais são as melhores práticas de produtividade?",
-    "Como economizar tempo nas tarefas diárias?",
-    "Dicas para melhorar o trabalho remoto",
-    "Sugestões para organizar minha agenda",
-    "Como otimizar meu fluxo de trabalho?"
+  const naturalysQuestions = [
+    "Onde fica a loja Naturalys?",
+    "Qual o método de pagamento aceito na loja Naturalys?",
+    "Quais produtos são vendidos na loja Naturalys?",
+    "A loja Naturalys oferece entrega?",
+    "Quais são os horários de funcionamento da loja Naturalys?",
+    "tem produtos orgânicos?",
+    "faz descontos?",
+    "tem programa de fidelidade?",
+    "aceita cartões de crédito?",
+    "tem estacionamento?",
+    "faz entregas em toda a cidade?",
+    "tem produtos importados?"
   ];
 
-  const row2Questions = [
-    "Como escrever e-mails mais eficientes?",
-    "Ideias para reuniões mais produtivas",
-    "Dicas para melhorar minha concentração",
-    "Como gerenciar projetos complexos?",
-    "Técnicas de brainstorming eficazes",
-    "Como automatizar tarefas repetitivas?"
-  ];
-
-  const row3Questions = [
-    "Como usar a IA para criar conteúdo?",
-    "Dicas para uma boa saúde mental no trabalho",
-    "Como evitar procrastinação?",
-    "Ferramentas para organização de tarefas",
-    "Como implementar a metodologia GTD?",
-    "Dicas para estudar de forma eficiente"
-  ];
+  const row1Questions = naturalysQuestions.slice(0, 4);
+  const row2Questions = naturalysQuestions.slice(4, 8);
+  const row3Questions = naturalysQuestions.slice(8, 12);
 
   return (
     <div className="w-screen max-w-[100vw] relative mb-[30px] mt-5 animate-fadeInUp overflow-hidden">

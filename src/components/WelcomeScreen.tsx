@@ -107,9 +107,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     };
   };
 
-  // START recording when user presses the button
+  // Função para iniciar a gravação
   const startRecording = async () => {
-    if (isRecording || loadingAudio || playing) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/webm;codecs=opus';
@@ -125,7 +124,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        // Stop all tracks to release mic
+        // parar tracks
         stream.getTracks().forEach((track) => track.stop());
         setIsRecording(false);
         await sendAudioToN8n(audioBlob);
@@ -138,12 +137,21 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     }
   };
 
-  // STOP recording when user releases the button
+  // Função para parar a gravação
   const stopRecording = () => {
-    if (!isRecording) return;
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
+    }
+  };
+
+  // Handler do clique no botão: alterna entre gravar e parar
+  const handleRecordButton = () => {
+    if (loadingAudio || playing) return; // evita conflitos
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
     }
   };
 
@@ -237,15 +245,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           </>
         ) : (
           <button
-            className="mb-10 w-20 h-20 rounded-full bg-mari-primary-green text-white flex items-center justify-center shadow-lg text-3xl transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50 transform hover:scale-105"
-            onMouseDown={startRecording}
-            onTouchStart={startRecording}
-            onMouseUp={stopRecording}
-            onMouseLeave={stopRecording}
-            onTouchEnd={stopRecording}
-            disabled={loadingAudio || playing}
+            className={`mb-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform ${isRecording ? 'bg-red-600 animate-pulse' : 'bg-mari-primary-green hover:bg-mari-dark-green hover:scale-105'} text-white disabled:opacity-50`}
+            onClick={handleRecordButton}
+            disabled={loadingAudio}
           >
-            <Mic size={40} />
+            {isRecording ? <Loader2 className="animate-spin" size={40} /> : <Mic size={40} />}
           </button>
         )}
       </div>
