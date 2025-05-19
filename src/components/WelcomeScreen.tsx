@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, Mic, MessageSquare, Loader2 } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
@@ -155,52 +156,63 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
 
   // UI modo texto (padrão)
   return (
-    <div className="flex flex-col items-center justify-center h-full p-0 text-center">
-      {/* Toggle Button - Separated */}
-      <div className="w-full flex items-center justify-center mb-6">
-        <div className="flex items-center justify-center gap-2 bg-mari-very-light-green rounded-full p-1">
-          <button
-            onClick={() => setIsAudioMode(false)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
-              !isAudioMode 
-                ? 'bg-mari-primary-green text-white shadow-sm' 
-                : 'text-mari-gray hover:bg-mari-light-green/50'
-            }`}
-          >
-            <MessageSquare size={16} />
-            Texto
-          </button>
-          <button
-            onClick={() => setIsAudioMode(true)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
-              isAudioMode 
-                ? 'bg-mari-primary-green text-white shadow-sm' 
-                : 'text-mari-gray hover:bg-mari-light-green/50'
-            }`}
-          >
-            <Mic size={16} />
-            Áudio
-          </button>
+    <div className="flex flex-col items-center justify-between h-full p-0">
+      {/* Top Section: Toggle Button and Header */}
+      <div className="w-full flex flex-col items-center pt-4">
+        {/* Toggle Button */}
+        <div className="w-full flex items-center justify-center mb-6">
+          <div className="flex items-center justify-center gap-2 bg-mari-very-light-green rounded-full p-1">
+            <button
+              onClick={() => setIsAudioMode(false)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+                !isAudioMode 
+                  ? 'bg-mari-primary-green text-white shadow-sm' 
+                  : 'text-mari-gray hover:bg-mari-light-green/50'
+              }`}
+            >
+              <MessageSquare size={16} />
+              Texto
+            </button>
+            <button
+              onClick={() => setIsAudioMode(true)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+                isAudioMode 
+                  ? 'bg-mari-primary-green text-white shadow-sm' 
+                  : 'text-mari-gray hover:bg-mari-light-green/50'
+              }`}
+            >
+              <Mic size={16} />
+              Áudio
+            </button>
+          </div>
+        </div>
+
+        {/* Header Text */}
+        <div className="w-full mb-10 animate-fadeInDown">
+          <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
+            Oi, sou a Mari
+          </div>
+          <p className="text-base font-light text-mari-gray tracking-wider">
+            Seu assistente de IA inteligente para ajudar no seu dia a dia
+          </p>
         </div>
       </div>
 
-      {/* Header - Separated */}
-      <div className="w-full mb-10 animate-fadeInDown">
-        <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
-          Oi, sou a Mari
-        </div>
-        <p className="text-base font-light text-mari-gray tracking-wider">
-          Seu assistente de IA inteligente para ajudar no seu dia a dia
-        </p>
-      </div>
-
-      {/* Questions Carousel - Full Width - Separated */}
-      <div className="w-full">
+      {/* Middle Section: Questions Carousel */}
+      <div className="w-full flex-grow flex items-center">
         <QuestionsCarousel onQuestionClick={handleQuestionClick} />
       </div>
 
-      {/* Form - Separated */}
-      <div className="w-full flex items-center justify-center mt-4">
+      {/* Bottom Section: Input Field */}
+      <div className="w-full flex flex-col items-center justify-center mb-8 mt-4">
+        {/* Footer Text moved above the input */}
+        <div className="w-full mb-3">
+          <p className="text-sm text-mari-gray opacity-70 animate-pulse">
+            Digite uma pergunta para iniciar a conversa
+          </p>
+        </div>
+        
+        {/* Form */}
         <form onSubmit={handleSubmit} className="w-full max-w-xl relative">
           <input
             type="text"
@@ -216,13 +228,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
             <Search size={20} />
           </button>
         </form>
-      </div>
-
-      {/* Footer Text - Separated */}
-      <div className="w-full mt-5">
-        <p className="text-sm text-mari-gray opacity-70 animate-pulse">
-          Digite uma pergunta para iniciar a conversa
-        </p>
       </div>
     </div>
   );
