@@ -36,7 +36,7 @@ const QuestionsCarousel: React.FC<QuestionsCarouselProps> = ({ onQuestionClick }
 
   return (
     <div className="w-full max-w-full relative mb-[30px] mt-5 animate-fadeInUp">
-      <div className="w-full mx-auto overflow-hidden mb-5">
+      <div className="w-screen max-w-[100vw] overflow-hidden mb-5">
         <CarouselRow 
           questions={row1Questions} 
           animationClass="animate-slideRow" 
