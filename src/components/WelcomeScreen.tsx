@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Search, Mic, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, Mic, MessageSquare, Loader2, Square } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
 
 const N8N_AUDIO_WEBHOOK_URL = 'https://rstysryr.app.n8n.cloud/webhook-test/53267980-a99f-47fc-81ea-29bce15f1481';
@@ -12,17 +12,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [searchInput, setSearchInput] = useState('');
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [loadingAudio, setLoadingAudio] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isMobile] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'processing'>('idle');
+  const [isProcessing, setIsProcessing] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleQuestionClick = (question: string) => {
     onStartChat(question);
@@ -50,24 +50,37 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       audioInstance.currentTime = 0;
       setAudioInstance(null);
     }
-    // Prepare multipart/form-data with the audio file
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
-    let timeoutId: NodeJS.Timeout | null = null;
+
     try {
+      console.log('Preparando áudio para envio...');
+      setDebugInfo('Preparando áudio para envio...');
+      
+      // Criar FormData e adicionar o arquivo de áudio
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio.webm');
+      formData.append('type', 'audio');
+      formData.append('timestamp', new Date().toISOString());
+
+      console.log('Enviando áudio para n8n...');
+      setDebugInfo('Enviando áudio para n8n...');
+
       const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(N8N_AUDIO_WEBHOOK_URL, {
         method: 'POST',
         body: formData,
-        signal: controller.signal,
+        signal: controller.signal
       });
-      if (!response.ok) throw new Error('Erro ao receber resposta do n8n');
-      // Check response type
+
+      if (!response.ok) {
+        throw new Error(`Erro do servidor: ${response.status}`);
+      }
+
       const contentType = response.headers.get('content-type') || '';
       let url = '';
+
       if (contentType.startsWith('audio/')) {
-        // Direct audio
         const blob = await response.blob();
         url = URL.createObjectURL(blob);
       } else if (contentType.includes('application/json')) {
@@ -77,53 +90,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         } else if (data.audioBase64) {
           url = `data:audio/wav;base64,${data.audioBase64}`;
         } else {
-          throw new Error('Formato de áudio não suportado');
+          throw new Error('Formato de áudio não suportado na resposta');
         }
       } else {
         throw new Error('Formato de resposta não suportado');
       }
+
       setAudioUrl(url);
       playAudio(url);
+      clearTimeout(timeoutId);
     } catch (err: any) {
-      // fallback: tenta enviar como JSON base64
-      try {
-        const base64 = await blobToBase64(audioBlob);
-        const payload = { audioBase64: base64 };
-        const jsonResp = await fetch(N8N_AUDIO_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!jsonResp.ok) throw new Error('n8n retornou erro');
-        const data = await jsonResp.json();
-        let url = '';
-        if (data.audioUrl) url = data.audioUrl;
-        else if (data.audioBase64) url = `data:audio/wav;base64,${data.audioBase64}`;
-        if (url) {
-          setAudioUrl(url);
-          playAudio(url);
-        } else {
-          throw new Error('Resposta do n8n sem áudio');
-        }
-      } catch (e2: any) {
-        setError('Erro ao processar áudio: ' + (e2?.message || err?.message || 'Erro desconhecido'));
-      }
+      console.error('Erro ao enviar áudio:', err);
+      setDebugInfo(`Erro ao enviar áudio: ${err.message}`);
+      setError('Erro ao processar áudio: ' + (err?.message || 'Erro desconhecido'));
     } finally {
       setLoadingAudio(false);
-      if (timeoutId) clearTimeout(timeoutId);
     }
-  };
-
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        resolve(dataUrl.split(',')[1]); // remove prefix
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   };
 
   // Function to play audio
@@ -149,149 +131,125 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     };
   };
 
+  // Função para enviar áudio de teste
+  const handleTestAudio = async () => {
+    if (isProcessing || loadingAudio || playing) return;
+    
+    setIsProcessing(true);
+    setError(null);
+    setDebugInfo('Enviando áudio de teste...');
+    
+    try {
+      // Payload de teste
+      const payload = {
+        type: 'audio',
+        message: 'Mensagem de teste de áudio',
+        timestamp: new Date().toISOString(),
+        test: true
+      };
+
+      const response = await fetch(N8N_AUDIO_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro do servidor: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      let url = '';
+
+      if (contentType.startsWith('audio/')) {
+        const blob = await response.blob();
+        url = URL.createObjectURL(blob);
+      } else if (contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data.audioUrl) {
+          url = data.audioUrl;
+        } else if (data.audioBase64) {
+          url = `data:audio/wav;base64,${data.audioBase64}`;
+        } else {
+          throw new Error('Formato de áudio não suportado na resposta');
+        }
+      } else {
+        throw new Error('Formato de resposta não suportado');
+      }
+
+      setAudioUrl(url);
+      playAudio(url);
+    } catch (err: any) {
+      console.error('Erro ao enviar áudio de teste:', err);
+      setDebugInfo(`Erro: ${err.message}`);
+      setError('Erro ao processar áudio: ' + (err?.message || 'Erro desconhecido'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Função para iniciar a gravação
   const startRecording = async () => {
-    if (recordingStatus !== 'idle') return;
-    
-    console.log('Iniciando gravação...');
-    setDebugInfo('Iniciando gravação...');
-    setRecordingStatus('recording');
-    setError(null);
-    audioChunksRef.current = [];
-
     try {
-      console.log('Solicitando permissão do microfone...');
-      setDebugInfo('Solicitando permissão do microfone...');
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100,
-          channelCount: 1
-        }
-      });
-      
-      console.log('Permissão concedida, configurando MediaRecorder...');
-      setDebugInfo('Permissão concedida, configurando MediaRecorder...');
-      
-      streamRef.current = stream;
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        mimeType = 'audio/mp4';
-        if (!MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/ogg';
-        }
-      }
-      
-      console.log('MimeType selecionado:', mimeType);
-      setDebugInfo(`MimeType selecionado: ${mimeType}`);
-      
-      const mediaRecorder = new MediaRecorder(stream, { 
-        mimeType,
-        audioBitsPerSecond: 64000
-      });
-      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (event: any) => {
-        console.log('Dados de áudio recebidos:', event.data.size, 'bytes');
+      mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        console.log('Gravação parada, processando áudio...');
-        setDebugInfo('Gravação parada, processando áudio...');
-        setRecordingStatus('processing');
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        sendAudioToN8n(audioBlob);
         
-        // Garantir que o stream seja liberado
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
+        // Parar todas as tracks do stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Resetar o timer
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
         }
-        
-        if (audioChunksRef.current.length === 0) {
-          console.log('Nenhum dado de áudio foi gravado');
-          setDebugInfo('Nenhum dado de áudio foi gravado');
-          setError('Nenhum áudio foi gravado. Tente novamente.');
-          setRecordingStatus('idle');
-          return;
-        }
-        
-        console.log('Criando blob de áudio...');
-        setDebugInfo('Criando blob de áudio...');
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        console.log('Tamanho do blob:', audioBlob.size, 'bytes');
-        await sendAudioToN8n(audioBlob);
-        setRecordingStatus('idle');
+        setRecordingTime(0);
       };
 
-      mediaRecorder.onerror = (event: any) => {
-        console.error('Erro na gravação:', event);
-        setDebugInfo(`Erro na gravação: ${event.error?.message || 'Erro desconhecido'}`);
-        setError('Erro durante a gravação. Tente novamente.');
-        stopRecording();
-      };
+      mediaRecorder.start();
+      setIsRecording(true);
+      setError(null);
+      setDebugInfo('Gravando áudio...');
 
-      // Solicitar dados a cada 1 segundo para feedback mais rápido
-      mediaRecorder.start(1000);
-      console.log('MediaRecorder iniciado com sucesso');
-      setDebugInfo('MediaRecorder iniciado com sucesso');
-      
-      // Vibrar para feedback tátil em dispositivos móveis
-      if (isMobile && navigator.vibrate) {
-        navigator.vibrate(200);
-      }
+      // Iniciar timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
     } catch (err: any) {
       console.error('Erro ao iniciar gravação:', err);
-      let errorMsg = 'Não foi possível acessar o microfone: ';
-      if (err.name === 'NotAllowedError') {
-        errorMsg += 'Permissão negada. Por favor, permita o acesso ao microfone.';
-      } else if (err.name === 'NotFoundError') {
-        errorMsg += 'Nenhum microfone encontrado.';
-      } else if (err.name === 'NotReadableError') {
-        errorMsg += 'Microfone já em uso.';
-      } else {
-        errorMsg += err.message || 'Erro desconhecido';
-      }
-      setDebugInfo(`Erro: ${errorMsg}`);
-      setError(errorMsg);
-      setRecordingStatus('idle');
-      
-      // Garantir que o stream seja liberado em caso de erro
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
+      setError('Erro ao acessar o microfone: ' + (err?.message || 'Erro desconhecido'));
+      setDebugInfo('Erro ao iniciar gravação');
     }
   };
 
   // Função para parar a gravação
   const stopRecording = () => {
-    if (recordingStatus !== 'recording') return;
-    
-    const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.stop();
-      // Vibrar para feedback tátil em dispositivos móveis
-      if (isMobile && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setDebugInfo('Processando áudio...');
     }
   };
 
-  // Handler do clique no botão: alterna entre gravar e parar
-  const handleRecordButton = () => {
-    if (recordingStatus === 'processing' || loadingAudio || playing) return;
-    
-    if (recordingStatus === 'idle') {
-      startRecording();
-    } else if (recordingStatus === 'recording') {
-      stopRecording();
-    }
+  // Função para formatar o tempo de gravação
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -384,41 +342,48 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
           </>
         ) : (
           <div className="flex flex-col items-center">
-            <button
-              className={`mb-4 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
-                ${recordingStatus === 'recording'
-                  ? 'bg-red-600 animate-pulse scale-110' 
-                  : recordingStatus === 'processing'
-                  ? 'bg-yellow-500'
-                  : 'bg-mari-primary-green hover:bg-mari-dark-green active:scale-95'
-                } 
-                text-white disabled:opacity-50 
-                ${isMobile ? 'active:scale-95 touch-none' : 'hover:scale-105'}
-                relative
-              `}
-              onClick={handleRecordButton}
-              onTouchStart={(e) => e.preventDefault()}
-              disabled={recordingStatus === 'processing' || loadingAudio}
-            >
-              <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
-              {recordingStatus === 'recording' ? (
-                <Loader2 className="animate-spin" size={40} />
-              ) : recordingStatus === 'processing' ? (
-                <Loader2 className="animate-spin" size={40} />
-              ) : (
-                <Mic size={40} />
-              )}
-              {recordingStatus === 'recording' && (
-                <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
-                  Gravando...
+            <div className="flex flex-col items-center gap-4">
+              <button
+                className={`mb-4 w-24 h-24 rounded-full flex items-center justify-center shadow-lg text-3xl transition-all duration-200 transform 
+                  ${isRecording
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : isProcessing
+                      ? 'bg-yellow-500'
+                      : 'bg-mari-primary-green hover:bg-mari-dark-green'
+                  } 
+                  text-white disabled:opacity-50 
+                  active:scale-95 hover:scale-105
+                  relative
+                `}
+                onClick={isRecording ? stopRecording : startRecording}
+                onTouchStart={(e) => e.preventDefault()}
+                disabled={isProcessing || loadingAudio}
+              >
+                <div className="absolute inset-0 rounded-full bg-white opacity-0 hover:opacity-10 transition-opacity"></div>
+                {isProcessing ? (
+                  <Loader2 className="animate-spin" size={40} />
+                ) : isRecording ? (
+                  <Square size={24} />
+                ) : (
+                  <Mic size={40} />
+                )}
+              </button>
+              {isRecording && (
+                <div className="text-sm text-mari-gray animate-pulse">
+                  Gravando... {formatRecordingTime(recordingTime)}
                 </div>
               )}
-              {recordingStatus === 'processing' && (
-                <div className="absolute -bottom-8 text-sm text-mari-gray animate-pulse">
+              {isProcessing && (
+                <div className="text-sm text-mari-gray animate-pulse">
                   Processando...
                 </div>
               )}
-            </button>
+            </div>
+            {error && (
+              <div className="text-red-500 mt-4 text-center max-w-xs">
+                {error}
+              </div>
+            )}
             {debugInfo && (
               <div className="text-xs text-mari-gray mt-2 max-w-xs text-center">
                 {debugInfo}

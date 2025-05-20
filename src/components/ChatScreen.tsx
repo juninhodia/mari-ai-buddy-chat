@@ -137,14 +137,23 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
       
       {/* Chat Input */}
       <div className="p-4 border-t border-[#e0e0e0] bg-mari-white">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <input
-            type="text"
-            className="w-full py-3 px-4 border border-[#e0e0e0] rounded-[24px] text-sm outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-mari-primary-green/20"
-            placeholder="Digite sua mensagem..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-          />
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              className="w-full py-3 px-4 pr-12 border border-[#e0e0e0] rounded-[24px] text-sm outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-mari-primary-green/20"
+              placeholder="Digite sua mensagem..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+            />
+            <button 
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!inputMessage.trim()}
+            >
+              <Send size={20} />
+            </button>
+          </div>
         </form>
       </div>
     </div>
