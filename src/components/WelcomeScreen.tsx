@@ -57,7 +57,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       
       // Criar FormData e adicionar o arquivo de áudio
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'audio.webm');
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('language', 'pt-BR');
       formData.append('type', 'audio');
       formData.append('timestamp', new Date().toISOString());
 
