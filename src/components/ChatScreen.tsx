@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatScreenProps {
   initialMessage?: string;
@@ -12,6 +13,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  
+  const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook-test/mariAI";
   
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
@@ -37,23 +41,37 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const generateAiResponse = (userMessage: string) => {
-    let response = '';
-    
-    if (userMessage.toLowerCase().includes('ia') || userMessage.toLowerCase().includes('inteligência artificial')) {
-      response = "A Inteligência Artificial está evoluindo rapidamente. Como assistente, estou aqui para ajudar com suas dúvidas e tarefas. Podemos conversar sobre produtividade, organização, e muitos outros assuntos!";
-    } else if (userMessage.toLowerCase().includes('produtividade') || userMessage.toLowerCase().includes('eficiência')) {
-      response = "Para aumentar sua produtividade, experimente técnicas como Pomodoro (25 minutos de foco, 5 de descanso), defina prioridades claras no início do dia, e elimine distrações durante períodos de trabalho intenso.";
-    } else if (userMessage.toLowerCase().includes('agenda') || userMessage.toLowerCase().includes('organizar')) {
-      response = "Para organizar melhor sua agenda, recomendo bloquear horários específicos para tarefas importantes, usar um sistema de calendário digital com lembretes, e revisar suas prioridades semanalmente.";
-    } else {
-      response = "Obrigada por sua mensagem! Estou aqui para ajudar com produtividade, organização de tarefas, e uso eficiente de tecnologia. Como posso auxiliar você hoje?";
+  const callN8nWebhook = async (userMessage: string) => {
+    try {
+      const response = await fetch(N8N_WEBHOOK, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao comunicar com N8N');
+      }
+
+      const data = await response.json();
+      return data.response || "Desculpe, não consegui processar sua solicitação.";
+    } catch (error) {
+      console.error('Erro ao chamar webhook N8N:', error);
+      toast({
+        title: "Erro na conexão",
+        description: "Não foi possível conectar ao serviço. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+      return "Desculpe, estou com problemas para me conectar ao serviço. Tente novamente mais tarde.";
     }
-    
-    return response;
   };
 
-  const handleSendMessage = (messageContent = inputMessage) => {
+  const handleSendMessage = async (messageContent = inputMessage) => {
     if (!messageContent.trim()) return;
     
     const currentTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -71,18 +89,33 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     // Show typing indicator
     setIsTyping(true);
     
-    // Simulate AI response with slight delay
-    setTimeout(() => {
+    try {
+      // Call N8N webhook and wait for response
+      const aiResponseText = await callN8nWebhook(messageContent);
+      
+      // Hide typing indicator and add AI response
       setIsTyping(false);
       
       const aiResponse: MessageProps = {
-        content: generateAiResponse(messageContent),
+        content: aiResponseText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
       
       setMessages(prevMessages => [...prevMessages, aiResponse]);
-    }, 1500);
+    } catch (error) {
+      setIsTyping(false);
+      console.error("Erro ao processar mensagem:", error);
+      
+      // Add error message
+      const errorResponse: MessageProps = {
+        content: "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente mais tarde.",
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      };
+      
+      setMessages(prevMessages => [...prevMessages, errorResponse]);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
