@@ -59,7 +59,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
       }
 
       const data = await response.json();
-      return data.response || "Desculpe, não consegui processar sua solicitação.";
+      console.log("Resposta do N8N:", data); // Log completo da resposta
+      
+      // Verificando a estrutura da resposta e extraindo o texto correto
+      if (data && Array.isArray(data) && data.length > 0 && data[0].output) {
+        return data[0].output;
+      } else if (data && data.response) {
+        return data.response;
+      } else if (typeof data === 'string') {
+        return data;
+      }
+      
+      // Caso não encontre o formato esperado
+      return "Recebi sua mensagem, mas não consegui processar a resposta corretamente.";
     } catch (error) {
       console.error('Erro ao chamar webhook N8N:', error);
       toast({
