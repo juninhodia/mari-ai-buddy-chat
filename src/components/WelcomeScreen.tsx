@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
@@ -22,16 +21,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-between h-full p-0">
+    <div className="flex flex-col items-center justify-between h-full">
       {/* Top Section: Header */}
-      <div className="w-full flex flex-col items-center pt-4">
+      <div className="w-full flex flex-col items-center pt-8 px-4 md:px-6">
         {/* Header Text - Centered */}
         <div className="w-full mb-10 animate-fadeInDown text-center">
           <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
             Oi, sou a Mari
           </div>
           <p className="text-base font-light text-mari-gray tracking-wider text-center">
-            Seu assistente de IA inteligente para ajudar no seu dia a dia
+           Assistente da Naturalys para ajudar com suas dúvidas
           </p>
         </div>
       </div>
@@ -39,12 +38,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       {/* Middle Section: Questions Carousel */}
       <div className="w-full flex-grow flex items-center justify-center">
         <div className="w-full transition-all duration-300 ease-in-out">
+          {/* Texto "O que você gostaria de saber?" */}
+          <div className="text-center mb-6">
+            <p className="text-lg font-medium" style={{ color: '#9e9e9e' }}>
+              O que você gostaria de saber?
+            </p>
+          </div>
           <QuestionsCarousel onQuestionClick={handleQuestionClick} />
         </div>
       </div>
 
       {/* Bottom Section: Input Field */}
-      <div className="w-full flex flex-col items-center justify-center mb-8 mt-4">
+      <div className="w-full flex flex-col items-center justify-center mb-8 mt-4 px-4 md:px-6">
         {/* Footer Text for text mode */}
         <div className="w-full mb-3 text-center transition-opacity duration-300">
           <p className="text-sm text-mari-gray opacity-70 animate-pulse text-center">
@@ -56,7 +61,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out">
           <input
             type="text"
-            className="w-full py-4 px-6 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-6 pr-12"
+            className="w-full py-4 px-8 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-8 pr-14"
             placeholder="Digite sua pergunta ou tópico para começar..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}

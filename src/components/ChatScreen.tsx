@@ -1,11 +1,12 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '../contexts/AuthContext';
 
 interface ChatScreenProps {
   initialMessage?: string;
+  onBack?: () => void;
 }
 
 const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
@@ -14,8 +15,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook-test/mariAI";
+  const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook/mariAI";
   
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
@@ -51,6 +53,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
         body: JSON.stringify({
           message: userMessage,
           timestamp: new Date().toISOString(),
+          user: {
+            id: user?.id || 'anonymous',
+            name: user?.name || 'Usuário Anônimo',
+            phone: user?.phone || '',
+            gender: user?.gender || '',
+            birthDate: user?.birthDate || '',
+            state: user?.state || '',
+            city: user?.city || ''
+          }
         }),
       });
 
