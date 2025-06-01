@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,11 +12,10 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister }) => {
   const [formData, setFormData] = useState({
-    phone: '',
+    email: '',
     password: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth();
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,26 +26,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
     }));
   };
 
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-    return value;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
-    setFormData(prev => ({
-      ...prev,
-      phone: formatted
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.phone || !formData.password) {
+    if (!formData.email || !formData.password) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos.",
@@ -54,36 +38,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
       return;
     }
 
-    setIsLoading(true);
+    const { error } = await login(formData.email, formData.password);
     
-    try {
-      // Aqui você implementaria a lógica de login com API
-      // Por enquanto, vamos verificar se existe um usuário no localStorage
-      const storedUser = localStorage.getItem('mari_user');
-      
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        login(userData);
-        toast({
-          title: "Login realizado!",
-          description: `Bem-vindo(a) de volta, ${userData.name}!`,
-        });
-        onSuccess();
-      } else {
-        toast({
-          title: "Usuário não encontrado",
-          description: "Verifique suas credenciais ou cadastre-se.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    if (error) {
       toast({
         title: "Erro no login",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        description: error,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo(a) de volta!",
+      });
+      onSuccess();
     }
   };
 
@@ -112,17 +80,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
         </p>
 
         <form onSubmit={handleSubmit}>
-          {/* Celular */}
+          {/* Email */}
           <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
             <label className="flex flex-col min-w-40 flex-1">
               <input
-                name="phone"
-                type="tel"
-                placeholder="Número de celular"
+                name="email"
+                type="email"
+                placeholder="Email"
                 className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#171C16] focus:outline-0 focus:ring-0 border-none bg-[#EBF2E9] focus:border-none h-14 placeholder:text-mari-primary-green p-4 text-base font-normal leading-normal"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                maxLength={15}
+                value={formData.email}
+                onChange={handleInputChange}
                 required
               />
             </label>
@@ -178,4 +145,4 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
   );
 };
 
-export default LoginScreen; 
+export default LoginScreen;

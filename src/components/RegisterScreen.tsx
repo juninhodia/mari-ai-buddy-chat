@@ -11,6 +11,7 @@ interface RegisterScreenProps {
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
     phone: '',
     gender: '',
     birthDate: '',
@@ -20,8 +21,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) =>
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptBeta, setAcceptBeta] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, isLoading } = useAuth();
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -36,7 +36,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) =>
     e.preventDefault();
     
     // Validação básica
-    if (!formData.name || !formData.phone || !formData.gender || !formData.birthDate || !formData.state || !formData.city || !formData.password) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.gender || !formData.birthDate || !formData.state || !formData.city || !formData.password) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos.",
@@ -63,31 +63,29 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) =>
       return;
     }
 
-    setIsLoading(true);
-    
-    try {
-      const success = await register(formData);
-      if (success) {
-        toast({
-          title: "Cadastro realizado!",
-          description: "Bem-vindo(a) à Mari AI!",
-        });
-        onSuccess();
-      } else {
-        toast({
-          title: "Erro no cadastro",
-          description: "Não foi possível realizar o cadastro. Tente novamente.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    const { error } = await register({
+      email: formData.email,
+      password: formData.password,
+      name: formData.name,
+      phone: formData.phone,
+      gender: formData.gender,
+      birthDate: formData.birthDate,
+      state: formData.state,
+      city: formData.city,
+    });
+
+    if (error) {
       toast({
         title: "Erro no cadastro",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        description: error,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: "Cadastro realizado!",
+        description: "Bem-vindo(a) à Mari AI! Verifique seu email para confirmar a conta.",
+      });
+      onSuccess();
     }
   };
 
@@ -144,6 +142,22 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) =>
                 placeholder="Digite seu nome completo"
                 className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#171C16] focus:outline-0 focus:ring-0 border-none bg-[#EBF2E9] focus:border-none h-14 placeholder:text-mari-primary-green p-4 text-base font-normal leading-normal"
                 value={formData.name}
+                onChange={handleInputChange}
+                required
+              />
+            </label>
+          </div>
+
+          {/* Email */}
+          <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+            <label className="flex flex-col min-w-40 flex-1">
+              <p className="text-[#171C16] text-base font-medium leading-normal pb-2">Email</p>
+              <input
+                name="email"
+                type="email"
+                placeholder="Digite seu email"
+                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#171C16] focus:outline-0 focus:ring-0 border-none bg-[#EBF2E9] focus:border-none h-14 placeholder:text-mari-primary-green p-4 text-base font-normal leading-normal"
+                value={formData.email}
                 onChange={handleInputChange}
                 required
               />
@@ -328,4 +342,4 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBack, onSuccess }) =>
   );
 };
 
-export default RegisterScreen; 
+export default RegisterScreen;

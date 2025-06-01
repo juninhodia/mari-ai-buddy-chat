@@ -15,7 +15,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   
   const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook/mariAI";
   
@@ -27,8 +27,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   useEffect(() => {
     // Add welcome message
     if (messages.length === 0) {
+      const welcomeMessage = profile?.name 
+        ? `Olá ${profile.name}! Como posso ajudar você hoje?`
+        : "Olá! Como posso ajudar você hoje?";
+        
       setMessages([{
-        content: "Olá! Como posso ajudar você hoje?",
+        content: welcomeMessage,
         isUser: false,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       }]);
@@ -37,7 +41,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     if (initialMessage) {
       handleSendMessage(initialMessage);
     }
-  }, []);
+  }, [profile]);
   
   useEffect(() => {
     scrollToBottom();
@@ -54,13 +58,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
           message: userMessage,
           timestamp: new Date().toISOString(),
           user: {
-            id: user?.id || 'anonymous',
-            name: user?.name || 'Usuário Anônimo',
-            phone: user?.phone || '',
-            gender: user?.gender || '',
-            birthDate: user?.birthDate || '',
-            state: user?.state || '',
-            city: user?.city || ''
+            id: profile?.id || 'anonymous',
+            name: profile?.name || 'Usuário Anônimo',
+            phone: profile?.phone || '',
+            gender: profile?.gender || '',
+            birthDate: profile?.birth_date || '',
+            state: profile?.state || '',
+            city: profile?.city || ''
           }
         }),
       });
@@ -70,7 +74,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
       }
 
       const data = await response.json();
-      console.log("Resposta do N8N:", data); // Log completo da resposta
+      console.log("Resposta do N8N:", data);
       
       // Verificando a estrutura da resposta e extraindo o texto correto
       if (data && Array.isArray(data) && data.length > 0 && data[0].output) {
