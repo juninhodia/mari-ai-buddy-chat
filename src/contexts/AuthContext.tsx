@@ -198,9 +198,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Login error:', error);
         
         // Tratar diferentes tipos de erro
-        if (error.message === 'Email not confirmed') {
-          return { error: 'Email não confirmado. Verifique sua caixa de entrada e confirme seu email antes de fazer login.' };
-        } else if (error.message === 'Invalid login credentials') {
+        if (error.message === 'Invalid login credentials') {
           return { error: 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.' };
         } else {
           return { error: error.message || 'Erro no login. Tente novamente.' };
@@ -297,13 +295,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.user) {
         console.log('Registration successful:', data.user);
         
-        if (data.user.email_confirmed_at) {
-          // Email já confirmado, usuário pode fazer login
-          return {};
-        } else {
-          // Email precisa ser confirmado
-          return { error: 'Cadastro realizado! Verifique seu email para confirmar sua conta antes de fazer login.' };
-        }
+        // Como removemos a confirmação de email, o usuário já pode fazer login
+        return {};
       }
 
       return { error: 'Cadastro falhou. Tente novamente.' };

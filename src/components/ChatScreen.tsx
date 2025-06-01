@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
@@ -23,12 +24,18 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Function to get first name from full name
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
   
   useEffect(() => {
     // Add welcome message
     if (messages.length === 0) {
-      const welcomeMessage = profile?.name 
-        ? `Olá ${profile.name}! Como posso ajudar você hoje?`
+      const firstName = profile?.name ? getFirstName(profile.name) : null;
+      const welcomeMessage = firstName 
+        ? `Oi, ${firstName}! Como posso ajudar você hoje?`
         : "Olá! Como posso ajudar você hoje?";
         
       setMessages([{
