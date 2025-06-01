@@ -48,29 +48,56 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Função para limpar estado de autenticação
+const cleanupAuthState = () => {
+  try {
+    // Limpar todas as chaves relacionadas ao Supabase
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    Object.keys(sessionStorage || {}).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  } catch (error) {
+    console.error('Error cleaning auth state:', error);
+  }
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !!session;
 
   // Set up auth state listener
   useEffect(() => {
+    let mounted = true;
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         console.log('Auth state changed:', event, session);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          // Fetch user profile
+        if (session?.user && event === 'SIGNED_IN') {
+          // Buscar perfil do usuário após login bem-sucedido
           setTimeout(() => {
-            fetchUserProfile(session.user.id);
-          }, 0);
-        } else {
+            if (mounted) {
+              fetchUserProfile(session.user.id);
+            }
+          }, 100);
+        } else if (event === 'SIGNED_OUT') {
           setProfile(null);
         }
         
@@ -79,18 +106,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          cleanupAuthState();
+        }
+        
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await fetchUserProfile(session.user.id);
+          }
+          
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-      
-      setIsLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
@@ -99,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -123,13 +171,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const checkAuth = (): boolean => {
-    return !!session?.user;
+    return !!session?.user && !isLoading;
   };
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     try {
       setIsLoading(true);
       
+      // Limpar estado anterior
+      cleanupAuthState();
+      
+      // Tentar logout global primeiro
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Ignorar erros de logout
+        console.log('Logout cleanup completed');
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -137,18 +196,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Login error:', error);
-        return { error: error.message };
+        
+        // Tratar diferentes tipos de erro
+        if (error.message === 'Email not confirmed') {
+          return { error: 'Email não confirmado. Verifique sua caixa de entrada e confirme seu email antes de fazer login.' };
+        } else if (error.message === 'Invalid login credentials') {
+          return { error: 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.' };
+        } else {
+          return { error: error.message || 'Erro no login. Tente novamente.' };
+        }
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
         console.log('Login successful:', data.user);
+        // O estado será atualizado automaticamente pelo onAuthStateChange
         return {};
       }
 
-      return { error: 'Login falhou' };
+      return { error: 'Login falhou. Tente novamente.' };
     } catch (error) {
       console.error('Login error:', error);
-      return { error: 'Erro inesperado no login' };
+      return { error: 'Erro inesperado no login. Tente novamente.' };
     } finally {
       setIsLoading(false);
     }
@@ -157,18 +225,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signOut();
+      
+      // Limpar estado local primeiro
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      // Limpar storage
+      cleanupAuthState();
+      
+      // Fazer logout no Supabase
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error('Logout error:', error);
       }
       
-      // Clear local state
-      setUser(null);
-      setProfile(null);
-      setSession(null);
+      // Recarregar a página para garantir estado limpo
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
+      // Mesmo com erro, limpar estado local
+      window.location.href = '/';
     } finally {
       setIsLoading(false);
     }
@@ -186,6 +264,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }): Promise<{ error?: string }> => {
     try {
       setIsLoading(true);
+      
+      // Limpar estado anterior
+      cleanupAuthState();
       
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
@@ -205,18 +286,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Registration error:', error);
-        return { error: error.message };
+        
+        if (error.message === 'User already registered') {
+          return { error: 'Este email já está cadastrado. Tente fazer login ou use outro email.' };
+        } else {
+          return { error: error.message || 'Erro no cadastro. Tente novamente.' };
+        }
       }
 
       if (data.user) {
         console.log('Registration successful:', data.user);
-        return {};
+        
+        if (data.user.email_confirmed_at) {
+          // Email já confirmado, usuário pode fazer login
+          return {};
+        } else {
+          // Email precisa ser confirmado
+          return { error: 'Cadastro realizado! Verifique seu email para confirmar sua conta antes de fazer login.' };
+        }
       }
 
-      return { error: 'Cadastro falhou' };
+      return { error: 'Cadastro falhou. Tente novamente.' };
     } catch (error) {
       console.error('Registration error:', error);
-      return { error: 'Erro inesperado no cadastro' };
+      return { error: 'Erro inesperado no cadastro. Tente novamente.' };
     } finally {
       setIsLoading(false);
     }

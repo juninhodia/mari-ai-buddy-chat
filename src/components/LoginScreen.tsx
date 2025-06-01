@@ -38,7 +38,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
       return;
     }
 
-    const { error } = await login(formData.email, formData.password);
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await login(formData.email.trim().toLowerCase(), formData.password);
     
     if (error) {
       toast({
@@ -91,6 +102,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading}
               />
             </label>
           </div>
@@ -106,6 +118,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
                 value={formData.password}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading}
               />
             </label>
           </div>
@@ -134,7 +147,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onSuccess, onRegister
         {/* Link para cadastro */}
         <button
           onClick={onRegister}
-          className="text-mari-primary-green text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center underline w-full hover:text-[#171C16] transition-colors"
+          disabled={isLoading}
+          className="text-mari-primary-green text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center underline w-full hover:text-[#171C16] transition-colors disabled:opacity-50"
         >
           Não tem uma conta? Cadastre-se
         </button>
