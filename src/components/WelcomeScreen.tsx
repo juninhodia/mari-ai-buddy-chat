@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
+import { useAuth } from '../contexts/AuthContext';
 
 interface WelcomeScreenProps {
   onStartChat: (message: string) => void;
@@ -8,6 +9,21 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
   const [searchInput, setSearchInput] = useState('');
+  const { profile, isAuthenticated } = useAuth();
+
+  // Function to get first name from full name
+  const getFirstName = (fullName: string) => {
+    return fullName.trim().split(' ')[0];
+  };
+
+  // Generate greeting text based on authentication status
+  const getGreetingText = () => {
+    if (isAuthenticated && profile?.name) {
+      const firstName = getFirstName(profile.name);
+      return `Oi, ${firstName}`;
+    }
+    return "Oi, sou a Mari";
+  };
 
   const handleQuestionClick = (question: string) => {
     onStartChat(question);
@@ -27,7 +43,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
         {/* Header Text - Centered */}
         <div className="w-full mb-10 animate-fadeInDown text-center">
           <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
-            Oi, sou a Mari
+            {getGreetingText()}
           </div>
           <p className="text-base font-light text-mari-gray tracking-wider text-center">
            Assistente da Naturalys para ajudar com suas dúvidas

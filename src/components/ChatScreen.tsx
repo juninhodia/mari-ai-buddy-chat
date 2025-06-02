@@ -1,9 +1,17 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, User, LogOut, ChevronDown } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ChatScreenProps {
   initialMessage?: string;
@@ -15,8 +23,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialMessageProcessedRef = useRef(false);
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, logout } = useAuth();
   
   const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook/mariAI";
   
@@ -29,31 +38,34 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const getFirstName = (fullName: string) => {
     return fullName.split(' ')[0];
   };
-  
-  useEffect(() => {
-    // Add welcome message
-    if (messages.length === 0) {
-      const firstName = profile?.name ? getFirstName(profile.name) : null;
-      const welcomeMessage = firstName 
-        ? `Oi, ${firstName}! Como posso ajudar você hoje?`
-        : "Olá! Como posso ajudar você hoje?";
-        
-      setMessages([{
-        content: welcomeMessage,
-        isUser: false,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      }]);
-    }
-    
-    if (initialMessage) {
-      handleSendMessage(initialMessage);
-    }
-  }, [profile]);
-  
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
 
+  // Function to handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no logout",
+        description: "Ocorreu um erro ao fazer logout. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Function to format birth date
+  const formatBirthDate = (birthDate: string) => {
+    if (!birthDate) return 'Não informado';
+    try {
+      return new Date(birthDate).toLocaleDateString('pt-BR');
+    } catch {
+      return 'Não informado';
+    }
+  };
+  
   const callN8nWebhook = async (userMessage: string) => {
     try {
       const response = await fetch(N8N_WEBHOOK, {
@@ -105,7 +117,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     }
   };
 
-  const handleSendMessage = async (messageContent = inputMessage) => {
+  const handleSendMessage = useCallback(async (messageContent = inputMessage) => {
     if (!messageContent.trim()) return;
     
     const currentTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -150,7 +162,35 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
       
       setMessages(prevMessages => [...prevMessages, errorResponse]);
     }
-  };
+  }, [inputMessage, profile]);
+
+  useEffect(() => {
+    // Add welcome message
+    if (messages.length === 0) {
+      const firstName = profile?.name ? getFirstName(profile.name) : null;
+      const welcomeMessage = firstName 
+        ? `Oi, ${firstName}! Como posso ajudar você hoje?`
+        : "Olá! Como posso ajudar você hoje?";
+        
+      setMessages([{
+        content: welcomeMessage,
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      }]);
+    }
+  }, [profile]);
+
+  // Separate useEffect for initial message to avoid re-execution
+  useEffect(() => {
+    if (initialMessage && !initialMessageProcessedRef.current) {
+      initialMessageProcessedRef.current = true;
+      handleSendMessage(initialMessage);
+    }
+  }, [initialMessage, handleSendMessage]);
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,6 +214,75 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
         <div className="text-2xl font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text animate-gradient">
           Mari
         </div>
+        
+        {/* User Profile Dropdown */}
+        {profile && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 hover:bg-mari-very-light-green">
+                <div className="w-8 h-8 bg-mari-primary-green rounded-full flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+                <span className="text-sm font-medium text-mari-black max-w-20 truncate">
+                  {getFirstName(profile.name)}
+                </span>
+                <ChevronDown size={16} className="text-mari-gray" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 bg-mari-primary-green rounded-full flex items-center justify-center">
+                    <User size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-mari-black">{profile.name}</p>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              {/* User Data */}
+              <div className="px-2 py-2 space-y-2">
+                <div className="text-xs">
+                  <p className="text-mari-gray font-medium">Telefone:</p>
+                  <p className="text-mari-black">{profile.phone || 'Não informado'}</p>
+                </div>
+                
+                <div className="text-xs">
+                  <p className="text-mari-gray font-medium">Gênero:</p>
+                  <p className="text-mari-black">{profile.gender || 'Não informado'}</p>
+                </div>
+                
+                <div className="text-xs">
+                  <p className="text-mari-gray font-medium">Data de Nascimento:</p>
+                  <p className="text-mari-black">{formatBirthDate(profile.birth_date)}</p>
+                </div>
+                
+                <div className="text-xs">
+                  <p className="text-mari-gray font-medium">Localização:</p>
+                  <p className="text-mari-black">
+                    {profile.city && profile.state 
+                      ? `${profile.city}, ${profile.state}`
+                      : profile.state || profile.city || 'Não informado'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              <DropdownMenuSeparator />
+              
+              {/* Logout Button */}
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+              >
+                <LogOut size={16} className="mr-2" />
+                Sair da conta
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       
       {/* Messages Area */}
