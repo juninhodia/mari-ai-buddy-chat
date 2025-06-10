@@ -12,15 +12,6 @@ const Index = () => {
   const { isAuthenticated, checkAuth, isLoading } = useAuth();
 
   useEffect(() => {
-    // Debug logs para produção
-    console.log('Environment:', {
-      NODE_ENV: import.meta.env.MODE,
-      SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-      HAS_SUPABASE_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY
-    });
-    
-    console.log('Auth state:', { isAuthenticated, isLoading, currentScreen });
-    
     // Aguardar o carregamento da autenticação
     if (!isLoading) {
       if (isAuthenticated) {
