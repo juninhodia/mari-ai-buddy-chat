@@ -16,11 +16,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
     return fullName.trim().split(' ')[0];
   };
 
+  // Function to determine greeting based on time of day
+  const getTimeBasedGreeting = () => {
+    const now = new Date();
+    const hour = now.getHours();
+
+    if (hour >= 5 && hour < 12) {
+      return "Bom dia";
+    } else if (hour >= 12 && hour < 18) {
+      return "Boa tarde";
+    } else {
+      return "Boa noite";
+    }
+  };
+
   // Generate greeting text based on authentication status
   const getGreetingText = () => {
     if (isAuthenticated && profile?.name) {
       const firstName = getFirstName(profile.name);
-      return `Oi, ${firstName}`;
+      const timeGreeting = getTimeBasedGreeting();
+      return `${timeGreeting}, ${firstName}`;
     }
     return "Oi, sou a Mari";
   };
@@ -42,7 +57,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
       <div className="w-full flex flex-col items-center pt-8 px-4 md:px-6">
         {/* Header Text - Centered */}
         <div className="w-full mb-10 animate-fadeInDown text-center">
-          <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient">
+          <div className="text-[48px] font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text mb-[10px] animate-gradient leading-tight">
             {getGreetingText()}
           </div>
           <p className="text-base font-light text-mari-gray tracking-wider text-center">

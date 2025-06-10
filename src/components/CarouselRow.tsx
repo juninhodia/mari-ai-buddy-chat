@@ -14,20 +14,11 @@ const CarouselRow: React.FC<CarouselRowProps> = ({
 }) => {
   return (
     <div className={`flex w-full ${animationClass} opacity-90 mb-[15px]`}>
-      <div className="flex w-[200%]">
+      <div className="flex w-full">
         <div className="flex min-w-full justify-start">
           {questions.map((question, index) => (
             <QuestionPill 
               key={`${question}-${index}`} 
-              question={question} 
-              onClick={onQuestionClick} 
-            />
-          ))}
-        </div>
-        <div className="flex min-w-full justify-start">
-          {questions.map((question, index) => (
-            <QuestionPill 
-              key={`${question}-dup-${index}`} 
               question={question} 
               onClick={onQuestionClick} 
             />

@@ -27,7 +27,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const { toast } = useToast();
   const { profile, logout } = useAuth();
   
-  const N8N_WEBHOOK = "https://rstysryr.app.n8n.cloud/webhook/mariAI";
+  const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook/mariAI";
   
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
