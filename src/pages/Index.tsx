@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import MariChat from '../components/MariChat';
@@ -13,6 +12,15 @@ const Index = () => {
   const { isAuthenticated, checkAuth, isLoading } = useAuth();
 
   useEffect(() => {
+    // Debug logs para produção
+    console.log('Environment:', {
+      NODE_ENV: import.meta.env.MODE,
+      SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      HAS_SUPABASE_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY
+    });
+    
+    console.log('Auth state:', { isAuthenticated, isLoading, currentScreen });
+    
     // Aguardar o carregamento da autenticação
     if (!isLoading) {
       if (isAuthenticated) {
@@ -129,9 +137,24 @@ const Index = () => {
       case 'welcome':
       default:
         return (
-          <MariChat 
-            onStartChat={handleStartChat}
-          />
+          <div className="min-h-screen bg-mari-white flex flex-col relative">
+            <MariChat onStartChat={handleStartChat} />
+            {/* Botões de Login/Cadastro para usuários não autenticados */}
+            <div className="fixed bottom-4 left-4 right-4 flex gap-2 justify-center z-10">
+              <button
+                onClick={() => setCurrentScreen('login')}
+                className="px-6 py-2 bg-mari-primary-green text-white rounded-full hover:bg-mari-dark-green transition-colors shadow-lg"
+              >
+                Entrar
+              </button>
+              <button
+                onClick={() => setCurrentScreen('register')}
+                className="px-6 py-2 border border-mari-primary-green text-mari-primary-green rounded-full hover:bg-mari-primary-green hover:text-white transition-colors shadow-lg bg-white"
+              >
+                Cadastrar
+              </button>
+            </div>
+          </div>
         );
     }
   };
