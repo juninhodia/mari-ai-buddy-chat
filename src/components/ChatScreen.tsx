@@ -28,7 +28,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage, onBack }) => {
   const { toast } = useToast();
   const { profile, logout } = useAuth();
   
-  const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook/mariAI";
+  const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook-test/mariAI";
   
   const [currentMode, setCurrentMode] = useState<'text' | 'audio'>('text');
   const [isAudioSupported, setIsAudioSupported] = useState(true);

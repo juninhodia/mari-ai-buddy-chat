@@ -27,7 +27,7 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
   const { toast } = useToast();
   const { profile, logout } = useAuth();
   
-  const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook/mariAI";
+  const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook-test/mariAI";
 
   // Cleanup quando componente desmonta
   useEffect(() => {
