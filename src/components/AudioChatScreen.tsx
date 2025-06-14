@@ -31,26 +31,35 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
 
   // Função para iniciar gravação
   const startRecording = async () => {
+    console.log('Iniciando gravação...');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Stream de áudio obtido:', stream);
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Dados de áudio disponíveis:', event.data.size);
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
+        console.log('Gravação parada, processando áudio...');
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('Blob de áudio criado:', { size: audioBlob.size, type: audioBlob.type });
         setAudioBlob(audioBlob);
         handleSendAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          console.log('Parando track:', track.kind);
+          track.stop();
+        });
       };
       
       mediaRecorder.start();
+      console.log('MediaRecorder iniciado');
       setIsRecording(true);
       setRecordingTime(0);
       
@@ -60,6 +69,7 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
       }, 1000);
       
     } catch (error) {
+      console.error('Erro ao iniciar gravação:', error);
       toast({
         title: 'Erro ao acessar o microfone',
         description: 'Verifique as permissões de áudio.',
@@ -70,17 +80,30 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
 
   // Função para parar gravação
   const stopRecording = () => {
+    console.log('Tentando parar gravação...', { isRecording, mediaRecorder: mediaRecorderRef.current });
     if (mediaRecorderRef.current && isRecording) {
+      console.log('Parando gravação...');
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
       }
+    }
+  };
+
+  // Função para alternar gravação (iniciar ou parar)
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else if (!isAIPlaying) {
+      startRecording();
     }
   };
 
   // Envio do áudio para o N8N
   const handleSendAudio = async (audio: Blob) => {
+    console.log('Enviando áudio para N8N...', { audioSize: audio.size, audioType: audio.type });
     setIsAIPlaying(true);
     try {
       const formData = new FormData();
@@ -95,20 +118,29 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
         city: profile?.city || ''
       }));
       
+      console.log('Fazendo requisição para:', N8N_WEBHOOK);
       const response = await fetch(N8N_WEBHOOK, {
         method: 'POST',
         body: formData,
       });
       
+      console.log('Resposta do N8N:', { status: response.status, ok: response.ok });
+      
       if (!response.ok) throw new Error('Falha ao enviar áudio');
       
       const data = await response.json();
+      console.log('Dados recebidos do N8N:', data);
       
       if (data && data.audioUrl) {
+        console.log('Reproduzindo áudio da resposta:', data.audioUrl);
         const audio = new window.Audio(data.audioUrl);
-        audio.onended = () => setIsAIPlaying(false);
+        audio.onended = () => {
+          console.log('Áudio da resposta terminou');
+          setIsAIPlaying(false);
+        };
         audio.play();
       } else {
+        console.log('Nenhum áudio de resposta recebido');
         setIsAIPlaying(false);
         toast({
           title: 'Resposta recebida',
@@ -116,6 +148,7 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
         });
       }
     } catch (error) {
+      console.error('Erro ao enviar áudio:', error);
       setIsAIPlaying(false);
       toast({
         title: 'Erro ao enviar áudio',
@@ -293,10 +326,11 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
                 ? 'bg-mari-dark-green animate-pulse shadow-lg shadow-mari-dark-green/50'
                 : 'bg-mari-primary-green hover:bg-mari-dark-green hover:scale-105 shadow-lg'
             }`}
-            onMouseDown={!isAIPlaying ? startRecording : undefined}
-            onMouseUp={stopRecording}
-            onTouchStart={!isAIPlaying ? startRecording : undefined}
-            onTouchEnd={stopRecording}
+            onClick={toggleRecording}
+            onMouseDown={!isAIPlaying && !isRecording ? startRecording : undefined}
+            onMouseUp={isRecording ? stopRecording : undefined}
+            onTouchStart={!isAIPlaying && !isRecording ? startRecording : undefined}
+            onTouchEnd={isRecording ? stopRecording : undefined}
             disabled={isAIPlaying}
           >
             {isRecording ? (
