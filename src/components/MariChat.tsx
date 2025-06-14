@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import WelcomeScreen from './WelcomeScreen';
 import ChatScreen from './ChatScreen';
+import AudioChatScreen from './AudioChatScreen';
 
 interface MariChatProps {
   onStartChat?: (message: string) => void;
@@ -11,6 +12,7 @@ interface MariChatProps {
 }
 
 const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propInitialMessage, onBack, onLogin, onRegister }) => {
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'chat' | 'audio'>('welcome');
   const [chatStarted, setChatStarted] = useState(!!propInitialMessage);
   const [initialMessage, setInitialMessage] = useState(propInitialMessage || '');
 
@@ -22,7 +24,12 @@ const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propIn
       // Senão, inicia o chat diretamente
       setInitialMessage(message);
       setChatStarted(true);
+      setCurrentScreen('chat');
     }
+  };
+
+  const handleStartAudioChat = () => {
+    setCurrentScreen('audio');
   };
 
   const handleBackToWelcome = () => {
@@ -31,19 +38,37 @@ const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propIn
     } else {
       setChatStarted(false);
       setInitialMessage('');
+      setCurrentScreen('welcome');
     }
   };
 
+  // Se há mensagem inicial, mostrar chat diretamente
+  if (propInitialMessage && currentScreen === 'welcome') {
+    return (
+      <div className="h-screen bg-mari-white">
+        <ChatScreen 
+          initialMessage={propInitialMessage} 
+          onBack={handleBackToWelcome}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-mari-white">
-      {chatStarted ? (
+      {currentScreen === 'chat' ? (
         <ChatScreen 
           initialMessage={initialMessage} 
           onBack={handleBackToWelcome}
         />
+      ) : currentScreen === 'audio' ? (
+        <AudioChatScreen 
+          onBack={handleBackToWelcome}
+        />
       ) : (
         <WelcomeScreen 
-          onStartChat={handleStartChat} 
+          onStartChat={handleStartChat}
+          onStartAudioChat={handleStartAudioChat}
           onLogin={onLogin}
           onRegister={onRegister}
         />

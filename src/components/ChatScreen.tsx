@@ -310,17 +310,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     <div className="flex flex-col h-screen w-full relative bg-mari-white">
       {/* Chat Header */}
       <div className="bg-mari-white border-b border-[#e0e0e0] py-4 px-5 flex items-center justify-between">
-        {/* Centralizar Mari + Toggle */}
-        <div className="flex-1 flex items-center justify-center gap-4">
+        {/* Nome Mari centralizado */}
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-2xl font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text animate-gradient">
             Mari
           </div>
-          {/* Toggle de Modos visualmente como switch */}
-          <ModeToggle
-            currentMode={currentMode}
-            onModeChange={handleModeChange}
-            isAudioSupported={true}
-          />
         </div>
         {/* User Profile Dropdown */}
         {profile && (

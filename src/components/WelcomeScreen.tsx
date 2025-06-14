@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Mic } from 'lucide-react';
 import QuestionsCarousel from './QuestionsCarousel';
 import { useAuth } from '../contexts/AuthContext';
 
 interface WelcomeScreenProps {
   onStartChat: (message: string) => void;
+  onStartAudioChat?: () => void;
   onLogin?: () => void;
   onRegister?: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat, onLogin, onRegister }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat, onStartAudioChat, onLogin, onRegister }) => {
   const [searchInput, setSearchInput] = useState('');
   const { profile, isAuthenticated } = useAuth();
 
@@ -44,6 +45,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat, onLogin, onR
 
   const handleQuestionClick = (question: string) => {
     onStartChat(question);
+  };
+
+  const handleAudioClick = () => {
+    if (onStartAudioChat) {
+      onStartAudioChat();
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -110,19 +117,28 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat, onLogin, onR
           </div>
           
           {/* Form for text input */}
-          <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out">
-            <input
-              type="text"
-              className="w-full py-4 px-8 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-8 pr-14"
-              placeholder="Digite sua pergunta ou tópico para começar..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
+          <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out flex gap-3 items-center">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                className="w-full py-4 px-8 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-8 pr-14"
+                placeholder="Digite sua pergunta ou tópico para começar..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+              <button 
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:scale-105"
+              >
+                <Send size={20} />
+              </button>
+            </div>
             <button 
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
+              type="button"
+              onClick={handleAudioClick}
+              className="bg-mari-light-green border-none w-12 h-12 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-primary-green hover:scale-105 shadow-md"
             >
-              <Send size={20} />
+              <Mic size={24} />
             </button>
           </form>
         </div>
