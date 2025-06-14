@@ -24,10 +24,30 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
   const { profile, logout } = useAuth();
   
   const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook/mariAI";
+
+  // Cleanup quando componente desmonta
+  useEffect(() => {
+    return () => {
+      console.log('Limpando recursos do AudioChatScreen...');
+      // Parar gravação se estiver ativa
+      if (isRecording) {
+        stopRecording();
+      }
+      // Limpar interval se existir
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      // Parar stream se existir
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   // Função para iniciar gravação
   const startRecording = async () => {
@@ -35,6 +55,8 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log('Stream de áudio obtido:', stream);
+      streamRef.current = stream;
+      
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -51,11 +73,20 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         console.log('Blob de áudio criado:', { size: audioBlob.size, type: audioBlob.type });
         setAudioBlob(audioBlob);
-        handleSendAudio(audioBlob);
-        stream.getTracks().forEach(track => {
-          console.log('Parando track:', track.kind);
-          track.stop();
-        });
+        
+        // Parar todas as tracks do stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => {
+            console.log('Parando track:', track.kind);
+            track.stop();
+          });
+          streamRef.current = null;
+        }
+        
+        // Só enviar se o áudio tem conteúdo
+        if (audioBlob.size > 0) {
+          handleSendAudio(audioBlob);
+        }
       };
       
       mediaRecorder.start();
@@ -70,6 +101,7 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
       
     } catch (error) {
       console.error('Erro ao iniciar gravação:', error);
+      setIsRecording(false);
       toast({
         title: 'Erro ao acessar o microfone',
         description: 'Verifique as permissões de áudio.',
@@ -80,23 +112,48 @@ const AudioChatScreen: React.FC<AudioChatScreenProps> = ({ onBack }) => {
 
   // Função para parar gravação
   const stopRecording = () => {
-    console.log('Tentando parar gravação...', { isRecording, mediaRecorder: mediaRecorderRef.current });
-    if (mediaRecorderRef.current && isRecording) {
-      console.log('Parando gravação...');
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-        recordingIntervalRef.current = null;
-      }
+    console.log('Tentando parar gravação...', { 
+      isRecording, 
+      mediaRecorder: mediaRecorderRef.current,
+      stream: streamRef.current 
+    });
+    
+    // Parar o contador de tempo primeiro
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+      console.log('Contador de tempo parado');
     }
+    
+    // Parar o MediaRecorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log('Parando MediaRecorder...');
+      mediaRecorderRef.current.stop();
+    }
+    
+    // Parar o stream imediatamente
+    if (streamRef.current) {
+      console.log('Parando stream...');
+      streamRef.current.getTracks().forEach(track => {
+        console.log('Parando track imediatamente:', track.kind, track.readyState);
+        track.stop();
+      });
+      streamRef.current = null;
+    }
+    
+    // Atualizar estado
+    setIsRecording(false);
+    console.log('Estado de gravação atualizado para false');
   };
 
   // Função para alternar gravação (iniciar ou parar)
   const toggleRecording = () => {
+    console.log('Toggle gravação - Estado atual:', { isRecording, isAIPlaying });
     if (isRecording) {
+      console.log('Parando gravação via toggle...');
       stopRecording();
     } else if (!isAIPlaying) {
+      console.log('Iniciando gravação via toggle...');
       startRecording();
     }
   };
