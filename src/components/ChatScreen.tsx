@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, User, LogOut, ChevronDown, Mic } from 'lucide-react';
+import { Send, User, LogOut, ChevronDown, Mic, ArrowLeft } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +19,7 @@ interface ChatScreenProps {
   onBack?: () => void;
 }
 
-const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
+const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage, onBack }) => {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -310,6 +310,16 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
     <div className="flex flex-col h-screen w-full relative bg-mari-white">
       {/* Chat Header */}
       <div className="bg-mari-white border-b border-[#e0e0e0] py-4 px-5 flex items-center justify-between">
+        {/* Botão voltar à esquerda */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-mari-very-light-green rounded-full transition-colors"
+          >
+            <ArrowLeft size={24} className="text-mari-primary-green" />
+          </button>
+        )}
+        
         {/* Nome Mari centralizado */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-2xl font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text animate-gradient">
