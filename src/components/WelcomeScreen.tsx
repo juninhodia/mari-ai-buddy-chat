@@ -5,9 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface WelcomeScreenProps {
   onStartChat: (message: string) => void;
+  onLogin?: () => void;
+  onRegister?: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat, onLogin, onRegister }) => {
   const [searchInput, setSearchInput] = useState('');
   const { profile, isAuthenticated } = useAuth();
 
@@ -76,35 +78,55 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartChat }) => {
             </p>
           </div>
           <QuestionsCarousel onQuestionClick={handleQuestionClick} />
+          
+          {/* Botões de Login/Cadastro para usuários não autenticados */}
+          {!isAuthenticated && onLogin && onRegister && (
+            <div className="w-full flex gap-2 justify-center mt-12 px-4">
+              <button
+                onClick={onLogin}
+                className="px-6 py-2 bg-mari-primary-green text-white rounded-full hover:bg-mari-dark-green transition-colors shadow-lg"
+              >
+                Entrar
+              </button>
+              <button
+                onClick={onRegister}
+                className="px-6 py-2 border border-mari-primary-green text-mari-primary-green rounded-full hover:bg-mari-primary-green hover:text-white transition-colors shadow-lg bg-white"
+              >
+                Cadastrar
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom Section: Input Field */}
-      <div className="w-full flex flex-col items-center justify-center mb-8 mt-4 px-4 md:px-6">
-        {/* Footer Text for text mode */}
-        <div className="w-full mb-3 text-center transition-opacity duration-300">
-          <p className="text-sm text-mari-gray opacity-70 animate-pulse text-center">
-            Digite uma pergunta para iniciar a conversa
-          </p>
+      {isAuthenticated && (
+        <div className="w-full flex flex-col items-center justify-center mb-8 mt-4 px-4 md:px-6">
+          {/* Footer Text for text mode */}
+          <div className="w-full mb-3 text-center transition-opacity duration-300">
+            <p className="text-sm text-mari-gray opacity-70 animate-pulse text-center">
+              Digite uma pergunta para iniciar a conversa
+            </p>
+          </div>
+          
+          {/* Form for text input */}
+          <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out">
+            <input
+              type="text"
+              className="w-full py-4 px-8 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-8 pr-14"
+              placeholder="Digite sua pergunta ou tópico para começar..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <button 
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
+            >
+              <Send size={20} />
+            </button>
+          </form>
         </div>
-        
-        {/* Form for text input */}
-        <form onSubmit={handleSubmit} className="w-full max-w-xl relative transition-all duration-300 ease-in-out">
-          <input
-            type="text"
-            className="w-full py-4 px-8 rounded-[30px] border-2 border-mari-light-green text-base shadow-md outline-none transition-all duration-300 focus:border-mari-primary-green focus:shadow-lg focus:shadow-mari-primary-green/20 pl-8 pr-14"
-            placeholder="Digite sua pergunta ou tópico para começar..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          <button 
-            type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-mari-primary-green border-none w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-mari-white transition-all duration-200 hover:bg-mari-dark-green hover:-translate-y-1/2 hover:scale-105"
-          >
-            <Send size={20} />
-          </button>
-        </form>
-      </div>
+      )}
     </div>
   );
 };

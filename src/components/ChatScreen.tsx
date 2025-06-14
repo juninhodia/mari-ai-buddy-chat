@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, User, LogOut, ChevronDown } from 'lucide-react';
+import { Send, User, LogOut, ChevronDown, Mic } from 'lucide-react';
 import ChatMessage, { MessageProps } from './ChatMessage';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ModeToggle from './ModeToggle';
 
 interface ChatScreenProps {
   initialMessage?: string;
@@ -28,6 +29,14 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   const { profile, logout } = useAuth();
   
   const N8N_WEBHOOK = "https://juninhodiazszsz.app.n8n.cloud/webhook/mariAI";
+  
+  const [currentMode, setCurrentMode] = useState<'text' | 'audio'>('text');
+  const [isAudioSupported, setIsAudioSupported] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isAIPlaying, setIsAIPlaying] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   // Function to scroll to bottom of messages
   const scrollToBottom = () => {
@@ -207,14 +216,112 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
   // Capitalize the first letter of the date
   const formattedDate = currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
 
+  // Verificar suporte a áudio
+  useEffect(() => {
+    const checkAudioSupport = async () => {
+      try {
+        if (!window.AudioContext) {
+          setIsAudioSupported(false);
+          return;
+        }
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        setIsAudioSupported(true);
+      } catch (error) {
+        setIsAudioSupported(false);
+        setCurrentMode('text');
+      }
+    };
+    checkAudioSupport();
+  }, []);
+
+  // Funções de gravação de áudio
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
+        handleSendAudio(audioBlob);
+      };
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      setIsRecording(false);
+      toast({ title: 'Erro ao acessar o microfone', description: 'Verifique as permissões.' });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  // Envio do áudio para o N8N
+  const handleSendAudio = async (audio: Blob) => {
+    setIsTyping(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audio, 'audio.webm');
+      formData.append('user', JSON.stringify({
+        id: profile?.id || 'anonymous',
+        name: profile?.name || 'Usuário Anônimo',
+        phone: profile?.phone || '',
+        gender: profile?.gender || '',
+        birthDate: profile?.birth_date || '',
+        state: profile?.state || '',
+        city: profile?.city || ''
+      }));
+      const response = await fetch(N8N_WEBHOOK, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Falha ao enviar áudio');
+      const data = await response.json();
+      if (data && data.audioUrl) {
+        setIsAIPlaying(true);
+        const audio = new window.Audio(data.audioUrl);
+        audio.onended = () => setIsAIPlaying(false);
+        audio.play();
+      }
+      setIsTyping(false);
+    } catch (error) {
+      setIsTyping(false);
+      toast({ title: 'Erro ao enviar áudio', description: 'Tente novamente.' });
+    }
+  };
+
+  // Função para alternar modo
+  const handleModeChange = (mode: 'text' | 'audio') => {
+    setCurrentMode(mode);
+    console.log('Modo alterado para:', mode);
+  };
+
   return (
     <div className="flex flex-col h-screen w-full relative bg-mari-white">
       {/* Chat Header */}
       <div className="bg-mari-white border-b border-[#e0e0e0] py-4 px-5 flex items-center justify-between">
-        <div className="text-2xl font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text animate-gradient">
-          Mari
+        {/* Centralizar Mari + Toggle */}
+        <div className="flex-1 flex items-center justify-center gap-4">
+          <div className="text-2xl font-bold bg-gradient-to-r from-mari-dark-green via-mari-primary-green to-mari-light-green to-mari-primary-green to-mari-dark-green bg-[length:200%_auto] text-transparent bg-clip-text animate-gradient">
+            Mari
+          </div>
+          {/* Toggle de Modos visualmente como switch */}
+          <ModeToggle
+            currentMode={currentMode}
+            onModeChange={handleModeChange}
+            isAudioSupported={true}
+          />
         </div>
-        
         {/* User Profile Dropdown */}
         {profile && (
           <DropdownMenu>
@@ -320,22 +427,41 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ initialMessage }) => {
       
       {/* Chat Input */}
       <div className="input-area p-3 bg-mari-white border-t border-[#e0e0e0]">
-        <form onSubmit={handleSubmit} className="message-form flex items-center bg-mari-white rounded-3xl border border-[#e0e0e0] py-1.5 px-4">
-          <input
-            type="text"
-            className="message-input flex-1 border-none outline-none bg-transparent text-sm py-2"
-            placeholder="Digite uma mensagem..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-          />
-          <button 
-            type="submit"
-            className="send-button w-8 h-8 rounded-full bg-mari-primary-green border-none text-white flex items-center justify-center cursor-pointer ml-2 transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!inputMessage.trim()}
-          >
-            <Send size={16} />
-          </button>
-        </form>
+        {currentMode === 'text' ? (
+          <form onSubmit={handleSubmit} className="message-form flex items-center bg-mari-white rounded-3xl border border-[#e0e0e0] py-1.5 px-4">
+            <input
+              type="text"
+              className="message-input flex-1 border-none outline-none bg-transparent text-sm py-2"
+              placeholder="Digite uma mensagem..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+            />
+            <button 
+              type="submit"
+              className="send-button w-8 h-8 rounded-full bg-mari-primary-green border-none text-white flex items-center justify-center cursor-pointer ml-2 transition-all duration-200 hover:bg-mari-dark-green disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!inputMessage.trim()}
+            >
+              <Send size={16} />
+            </button>
+          </form>
+        ) : (
+          <div className="flex items-center justify-center w-full">
+            <button
+              type="button"
+              className={`w-14 h-14 rounded-full flex items-center justify-center border-none outline-none transition-all duration-200 ${isRecording ? 'bg-mari-primary-green animate-pulse' : isAIPlaying ? 'bg-mari-dark-green animate-pulse' : 'bg-mari-light-green'}`}
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              aria-label={isRecording ? 'Gravando...' : 'Segure para gravar áudio'}
+            >
+              <Mic size={32} className="text-white" />
+            </button>
+            <span className="ml-4 text-mari-gray text-sm">
+              {isRecording ? 'Gravando... solte para enviar' : isAIPlaying ? 'A IA está respondendo em áudio...' : 'Segure o microfone para gravar'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

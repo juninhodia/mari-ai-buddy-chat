@@ -6,9 +6,11 @@ interface MariChatProps {
   onStartChat?: (message: string) => void;
   initialMessage?: string;
   onBack?: () => void;
+  onLogin?: () => void;
+  onRegister?: () => void;
 }
 
-const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propInitialMessage, onBack }) => {
+const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propInitialMessage, onBack, onLogin, onRegister }) => {
   const [chatStarted, setChatStarted] = useState(!!propInitialMessage);
   const [initialMessage, setInitialMessage] = useState(propInitialMessage || '');
 
@@ -40,7 +42,11 @@ const MariChat: React.FC<MariChatProps> = ({ onStartChat, initialMessage: propIn
           onBack={handleBackToWelcome}
         />
       ) : (
-        <WelcomeScreen onStartChat={handleStartChat} />
+        <WelcomeScreen 
+          onStartChat={handleStartChat} 
+          onLogin={onLogin}
+          onRegister={onRegister}
+        />
       )}
     </div>
   );

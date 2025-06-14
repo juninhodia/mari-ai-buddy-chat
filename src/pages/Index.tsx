@@ -76,6 +76,11 @@ const Index = () => {
     }
   };
 
+  const handleBackFromLogin = () => {
+    setPendingMessage('');
+    setCurrentScreen('welcome');
+  };
+
   const handleGoToRegister = () => {
     setCurrentScreen('register');
   };
@@ -111,7 +116,7 @@ const Index = () => {
       case 'login':
         return (
           <LoginScreen
-            onBack={handleBackToWelcome}
+            onBack={handleBackFromLogin}
             onSuccess={handleLoginSuccess}
             onRegister={handleGoToRegister}
           />
@@ -129,22 +134,11 @@ const Index = () => {
       default:
         return (
           <div className="min-h-screen bg-mari-white flex flex-col relative">
-            <MariChat onStartChat={handleStartChat} />
-            {/* Botões de Login/Cadastro para usuários não autenticados */}
-            <div className="fixed bottom-4 left-4 right-4 flex gap-2 justify-center z-10">
-              <button
-                onClick={() => setCurrentScreen('login')}
-                className="px-6 py-2 bg-mari-primary-green text-white rounded-full hover:bg-mari-dark-green transition-colors shadow-lg"
-              >
-                Entrar
-              </button>
-              <button
-                onClick={() => setCurrentScreen('register')}
-                className="px-6 py-2 border border-mari-primary-green text-mari-primary-green rounded-full hover:bg-mari-primary-green hover:text-white transition-colors shadow-lg bg-white"
-              >
-                Cadastrar
-              </button>
-            </div>
+            <MariChat 
+              onStartChat={handleStartChat} 
+              onLogin={handleGoToLogin}
+              onRegister={handleGoToRegister}
+            />
           </div>
         );
     }
